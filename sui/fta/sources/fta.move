@@ -6,16 +6,13 @@ module fta::fta;
 
 use assets::EVE::EVE;
 use fta::blacklist::{Self, Blacklist};
-use fta::constants;
 use fta::gate_registry::{Self, GateRegistry};
 use fta::jump_estimate::JumpEstimate;
 use fta::jump_history::{Self, JumpHistory};
 use fta::network_node_registry::{Self, NetworkNodeRegistry};
 use sui::balance::{Self, Balance};
 use sui::clock::Clock;
-use sui::dynamic_field as df;
 use sui::package::Publisher;
-use world::character::Character;
 use world::gate::Gate;
 
 #[error(code = 1)]
@@ -25,8 +22,6 @@ const ELinkedGateNotInNetwork: vector<u8> =
     b"The gate linked to this gate is not part of the Frontier Transit Authority";
 #[error(code = 3)]
 const ENoLinkedGate: vector<u8> = b"You cannot perform an operation on a gate that is not linked";
-#[error(code = 4)]
-const EOwnerCharacterNotSet: vector<u8> = b"The owner character dynamic field has not been set";
 #[error(code = 5)]
 const EGateNetworkNodeNotRegistered: vector<u8> =
     b"The network node for this gate is not registered with the Frontier Transit Authority";
@@ -68,7 +63,7 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         ctx.sender(),
     );
 
-    let mut fta = FrontierTransitAuthority {
+    let fta = FrontierTransitAuthority {
         id: object::new(ctx),
         deployer_addr: ctx.sender(),
         gate_registry: gate_registry::new(ctx),
@@ -79,26 +74,17 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         developer_balance: balance::zero(),
     };
 
-    // Add the dynamic fields
-    df::add(&mut fta.id, b"blacklist", blacklist::new(ctx));
-
     // Create the Transit Authority object and make it shared
     // TODO: should this use a OTW?
     transfer::share_object(fta);
 }
 
-// Configures the character that should own the gates
-// TODO: once there's a way to receive the OwnerCap<Gate> without it needing to be owned by a character,
-// switch this to the shared object so only approved operations in the contract can use it.
-public fun set_owner_character(
-    fta: &mut FrontierTransitAuthority,
-    _: &DeveloperCap,
-    character: &mut Character,
-    ctx: &TxContext,
-) {
-    assert!(ctx.sender() == fta.deployer_addr);
-    assert!(character.character_address() == ctx.sender());
-    df::add(&mut fta.id, constants::owner_character_field_name(), object::id(character));
+public(package) fun uid(fta: &FrontierTransitAuthority): &UID {
+    &fta.id
+}
+
+public(package) fun uid_mut(fta: &mut FrontierTransitAuthority): &mut UID {
+    &mut fta.id
 }
 
 public(package) fun blacklist(fta: &FrontierTransitAuthority): &Blacklist {
@@ -107,29 +93,6 @@ public(package) fun blacklist(fta: &FrontierTransitAuthority): &Blacklist {
 
 public(package) fun blacklist_mut(fta: &mut FrontierTransitAuthority): &mut Blacklist {
     &mut fta.blacklist
-}
-
-// Gets the ID of the character that holds gate ownership
-public fun get_owner_character(fta: &FrontierTransitAuthority): ID {
-    assert!(df::exists_(&fta.id, constants::owner_character_field_name()), EOwnerCharacterNotSet);
-    *df::borrow(&fta.id, constants::owner_character_field_name())
-}
-
-/// Asserts that a gate is valid for jump or update operations
-public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &Gate) {
-    let linked_gate_id_opt = gate.linked_gate_id();
-    // Ensure the gate is linked to another gate
-    assert!(linked_gate_id_opt.is_some(), ENoLinkedGate);
-    let linked_gate_id = linked_gate_id_opt.borrow();
-    // Ensure this gate is in the network
-    assert!(fta.gate_registry.registered(gate), EGateNotInNetwork);
-    // Ensure the linked gate is in the network
-    assert!(fta.gate_registry.registered_by_id(*linked_gate_id), ELinkedGateNotInNetwork);
-    // Ensure the network node for this gate is registered
-    assert!(
-        fta.network_node_registry.registered_by_id(*gate.energy_source_id().borrow()),
-        EGateNetworkNodeNotRegistered,
-    );
 }
 
 public(package) fun gate_registry(fta: &FrontierTransitAuthority): &GateRegistry {
@@ -164,6 +127,23 @@ public(package) fun bounty_balance(fta: &mut FrontierTransitAuthority): &mut Bal
 
 public(package) fun developer_balance(fta: &mut FrontierTransitAuthority): &mut Balance<EVE> {
     &mut fta.developer_balance
+}
+
+/// Asserts that a gate is valid for jump or update operations
+public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &Gate) {
+    let linked_gate_id_opt = gate.linked_gate_id();
+    // Ensure the gate is linked to another gate
+    assert!(linked_gate_id_opt.is_some(), ENoLinkedGate);
+    let linked_gate_id = linked_gate_id_opt.borrow();
+    // Ensure this gate is in the network
+    assert!(fta.gate_registry.registered(gate), EGateNotInNetwork);
+    // Ensure the linked gate is in the network
+    assert!(fta.gate_registry.registered_by_id(*linked_gate_id), ELinkedGateNotInNetwork);
+    // Ensure the network node for this gate is registered
+    assert!(
+        fta.network_node_registry.registered_by_id(*gate.energy_source_id().borrow()),
+        EGateNetworkNodeNotRegistered,
+    );
 }
 
 //=================================

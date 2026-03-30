@@ -129,7 +129,7 @@ fun transfer_gate(
     // Transfer the gate ownership to FTA
     gate_owner_cap.transfer_owner_cap_with_receipt(
         gate_owner_cap_receipt,
-        fta.get_owner_character().to_address(),
+        object::id(fta).to_address(),
         ctx,
     );
 
@@ -400,14 +400,9 @@ public fun return_gate_to_owner(
     cap_ticket: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
 ) {
-    // Get the owner cap from FTA
-    let (cap, receipt) = access::borrow_gate_owner_cap(fta, character, gate, cap_ticket, ctx);
-    // Transfer it to the original owner
-    cap.transfer_owner_cap_with_receipt(
-        receipt,
-        fta.gate_registry().get(gate).transferred_from_character_id().to_address(),
-        ctx,
-    );
+    // Transfer the owner cap back to the character
+    access::transfer_owner_cap(fta, cap_ticket, object::id(character).to_address(), ctx);
+
     // Remove the gate from the network
     fta.gate_registry_mut().deregister(gate);
 }

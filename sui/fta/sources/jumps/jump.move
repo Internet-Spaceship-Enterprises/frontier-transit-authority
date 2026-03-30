@@ -137,7 +137,6 @@ public fun issue_jump_permit(
     // Power up the gates!
     gate_control::change_gate_online(
         fta,
-        character,
         source_gate,
         source_gate_owner_cap,
         source_network_node,
@@ -147,7 +146,6 @@ public fun issue_jump_permit(
     );
     gate_control::change_gate_online(
         fta,
-        character,
         destination_gate,
         destination_gate_owner_cap,
         destination_network_node,
