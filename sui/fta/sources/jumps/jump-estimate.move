@@ -22,20 +22,25 @@ public struct JumpEstimate has copy, drop, store {
     character_id: ID,
     source_gate_id: ID,
     destination_gate_id: ID,
+    // The pre-penalty but duration-scaled base fee for the source gate
     source_gate_fee: u64,
+    // The pre-penalty but duration-scaled base fee for the destination gate
     destination_gate_fee: u64,
+    // The pre-penalty but duration-scaled base fee for the source network node
     source_network_node_fee: u64,
+    // The pre-penalty but duration-scaled base fee for the destination network node
     destination_network_node_fee: u64,
-    total_base_fee: u64,
-    bounty_fee: u64,
-    developer_fee: u64,
+    // The penalty factor to apply to the base fees
     penalty_factor: u64,
+    // The bounty fee for the jump, which goes into the bounty pool to pay out rewards
+    bounty_fee: u64,
+    // The developer fee for the jump, which goes into the developer pool to fund development work
+    developer_fee: u64,
     // The duration, in milliseconds, that the permit is good for
     validity_duration: u64,
 }
 
 /// Gets a fee estimate for a jump from a given gate
-/// TODO: with dynamic linking, require the destination gate as well
 public fun new(
     gate_registry: &GateRegistry,
     network_node_registry: &NetworkNodeRegistry,
@@ -46,8 +51,6 @@ public fun new(
     clock: &Clock,
     ctx: &mut TxContext,
 ): JumpEstimate {
-    // TODO: handle blacklisted
-
     // Ensure the gates are actually linked with each other
     assert!(
         source_gate.linked_gate_id().is_some() && source_gate.linked_gate_id().borrow() == object::id(destination_gate),
@@ -79,14 +82,13 @@ public fun new(
     let penalty_factor = 100;
 
     // Calculate the scaled fees based on the validity duration
-    let scaled_source_gate_base_fee =
-        penalty_factor * source_gate_base_fee * scaling_factor / FEE_PRECISION_FACTOR / 100;
+    let scaled_source_gate_base_fee = source_gate_base_fee * scaling_factor / FEE_PRECISION_FACTOR;
     let scaled_destination_gate_base_fee =
-        penalty_factor * destination_gate_base_fee * scaling_factor / FEE_PRECISION_FACTOR / 100;
+        destination_gate_base_fee * scaling_factor / FEE_PRECISION_FACTOR;
     let scaled_source_network_node_base_fee =
-        penalty_factor * source_network_node_base_fee * scaling_factor / FEE_PRECISION_FACTOR / 100;
+        source_network_node_base_fee * scaling_factor / FEE_PRECISION_FACTOR;
     let scaled_destination_network_node_base_fee =
-        penalty_factor * destination_network_node_base_fee * scaling_factor / FEE_PRECISION_FACTOR / 100;
+        destination_network_node_base_fee * scaling_factor / FEE_PRECISION_FACTOR;
 
     let total_base_fee =
         scaled_source_gate_base_fee
@@ -106,7 +108,6 @@ public fun new(
         destination_gate_fee: scaled_destination_gate_base_fee,
         source_network_node_fee: scaled_source_network_node_base_fee,
         destination_network_node_fee: scaled_destination_network_node_base_fee,
-        total_base_fee: total_base_fee,
         bounty_fee: bounty_fee,
         developer_fee: developer_fee,
         penalty_factor: penalty_factor,
@@ -146,10 +147,6 @@ public(package) fun destination_network_node_fee(estimate: &JumpEstimate): u64 {
     estimate.destination_network_node_fee
 }
 
-public(package) fun total_base_fee(estimate: &JumpEstimate): u64 {
-    estimate.total_base_fee
-}
-
 public(package) fun bounty_fee(estimate: &JumpEstimate): u64 {
     estimate.bounty_fee
 }
@@ -168,4 +165,25 @@ public(package) fun penalty_factor(estimate: &JumpEstimate): u64 {
 
 public(package) fun prepared_at(estimate: &JumpEstimate): u64 {
     estimate.prepared_at
+}
+
+public fun total_base_fee(estimate: &JumpEstimate): u64 {
+    estimate.source_gate_fee
+    + estimate.destination_gate_fee
+    + estimate.source_network_node_fee
+    + estimate.destination_network_node_fee
+}
+
+/// Gets the total overall fee to be paid for an estimate
+public fun total_fee(estimate: &JumpEstimate): u64 {
+    estimate.total_base_fee()
+    * estimate.penalty_factor / 100
+    + estimate.bounty_fee
+    + estimate.developer_fee
+}
+
+/// Gets the total bounty fee to be paid for an estimate
+public fun total_bounty_fee(estimate: &JumpEstimate): u64 {
+    // The bounty fee is the sum of the bounty fee and the penalty applied to the base fee
+    estimate.bounty_fee + estimate.total_base_fee() * (estimate.penalty_factor() - 100) / 100
 }

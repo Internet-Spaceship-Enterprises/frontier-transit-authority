@@ -2,14 +2,18 @@ module fta::jump;
 
 use assets::EVE::EVE;
 use fta::fta::FrontierTransitAuthority;
+use fta::gate_control;
 use fta::jump_estimate::{Self, JumpEstimate};
 use fta::jump_quote::{Self, JumpQuote};
 use sui::balance;
 use sui::clock::Clock;
-use sui::coin::{Self, Coin};
+use sui::coin::Coin;
+use sui::transfer::Receiving;
 use world::access::OwnerCap;
 use world::character::Character;
+use world::energy::EnergyConfig;
 use world::gate::Gate;
+use world::network_node::NetworkNode;
 
 public struct JumpAuth has drop {}
 
@@ -24,6 +28,10 @@ const EWrongCharacter: vector<u8> =
     b"The character you have provided is different than the character on your quote";
 #[error(code = 4)]
 const EWrongPaymentAmount: vector<u8> = b"The wrong payment amount was sent";
+#[error(code = 5)]
+const EWrongNetworkNode: vector<u8> = b"The wrong network node was provided";
+#[error(code = 6)]
+const ENetworkNodeOffline: vector<u8> = b"The network node is offline";
 
 // Configures the gate to use our jump extension
 public(package) fun init_jump_extension(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>) {
@@ -81,15 +89,20 @@ public fun jump_quote(
 /// The quote must be generated with the same source and destination gates, and the correct payment must be provided.
 public fun issue_jump_permit(
     fta: &mut FrontierTransitAuthority,
-    character: &Character,
+    character: &mut Character,
     quote: JumpQuote,
-    source_gate: &Gate,
-    destination_gate: &Gate,
+    source_gate: &mut Gate,
+    source_gate_owner_cap: Receiving<OwnerCap<Gate>>,
+    source_network_node: &mut NetworkNode,
+    destination_gate: &mut Gate,
+    destination_gate_owner_cap: Receiving<OwnerCap<Gate>>,
+    destination_network_node: &mut NetworkNode,
     mut payment: Coin<EVE>,
+    energy_config: &EnergyConfig,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    // NOTE: we intentionally do not check if the sender address owns the character,
+    // NOTE: we intentionally do not check if the sender address owns the character
     // because we want to enable tribes to pay for jumps on behalf of their members
 
     // Ensure the provided gates match the invoice gates
@@ -106,22 +119,42 @@ public fun issue_jump_permit(
     fta.check_gate_validity(source_gate);
     fta.check_gate_validity(destination_gate);
 
-    // Ensure the correct payment was sent
+    // Ensure the correct network nodes were provided
     assert!(
-        coin::value(&payment) == quote.estimate().total_base_fee() + quote.estimate().bounty_fee() + quote.estimate().developer_fee(),
-        EWrongPaymentAmount,
+        object::id(source_network_node) == source_gate.energy_source_id().borrow(),
+        EWrongNetworkNode,
+    );
+    assert!(
+        object::id(destination_network_node) == destination_gate.energy_source_id().borrow(),
+        EWrongNetworkNode,
     );
 
-    // Record the issuance of the permit
-    fta
-        .jump_history_mut()
-        .add(
-            quote.estimate(),
-            character.id(),
-            ctx,
-        );
+    // Ensure the network nodes are online
+    assert!(source_network_node.is_network_node_online(), ENetworkNodeOffline);
+    assert!(destination_network_node.is_network_node_online(), ENetworkNodeOffline);
 
-    // Get and transfer the source gate fee
+    // Power up the gates!
+    gate_control::change_gate_online(
+        fta,
+        character,
+        source_gate,
+        source_gate_owner_cap,
+        source_network_node,
+        true,
+        energy_config,
+        ctx,
+    );
+    gate_control::change_gate_online(
+        fta,
+        character,
+        destination_gate,
+        destination_gate_owner_cap,
+        destination_network_node,
+        true,
+        energy_config,
+        ctx,
+    );
+
     let source_gate_fee_recipient = fta.gate_registry().get(source_gate).fee_recipient();
     let source_gate_fee_coin = payment.split(quote.estimate().source_gate_fee(), ctx);
     source_gate_fee_coin.send_funds(source_gate_fee_recipient);
@@ -153,16 +186,23 @@ public fun issue_jump_permit(
     );
     destination_network_node_fee_coin.send_funds(destination_network_node_fee_recipient);
 
-    // Split and transfer the bounty fee
-    let bounty_balance = payment.split(quote.estimate().bounty_fee(), ctx).into_balance();
-    balance::join(fta.bounty_balance(), bounty_balance);
+    // Split and transfer the developer fee
+    let developer_balance = payment.split(quote.estimate().developer_fee(), ctx).into_balance();
+    balance::join(fta.developer_balance(), developer_balance);
 
-    // Sanity check that all amounts are correct
-    assert!(payment.value() == quote.estimate().developer_fee(), EWrongPaymentAmount);
-
-    // Transfer the developer fee
+    // Sanity check that the remaining amount is correct
+    assert!(payment.value() == quote.estimate().bounty_fee(), EWrongPaymentAmount);
+    // Transfer the bounty fee
     balance::join(fta.bounty_balance(), payment.into_balance());
 
+    // Record the issuance of the permit
+    fta
+        .jump_history_mut()
+        .add(
+            quote.estimate(),
+            character.id(),
+            ctx,
+        );
     source_gate.issue_jump_permit(
         destination_gate,
         character,
@@ -174,5 +214,4 @@ public fun issue_jump_permit(
     quote.destroy();
 }
 
-// TODO: refund jump permit
-// TODO: restocking fee
+// TODO: refund jump permit (with restocking fee?)

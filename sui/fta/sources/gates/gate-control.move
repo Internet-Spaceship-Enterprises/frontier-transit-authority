@@ -19,7 +19,7 @@ const ENetworkNodeNotRegistered: vector<u8> =
     b"The network node for this gate has not been registered with the Frontier Transit Authority";
 
 /// Onlines or Offlines an FTA gate if it's not already online
-public(package) fun change_online(
+public(package) fun change_gate_online(
     fta: &FrontierTransitAuthority,
     character: &mut Character,
     gate: &mut Gate,

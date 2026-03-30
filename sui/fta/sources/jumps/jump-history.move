@@ -8,8 +8,22 @@ public struct JumpHistoryEntry has store {
     character_id: ID,
 }
 
+// TODO: keep rolling jump fee averages
+public struct JumpHistoryFeeAverager has store {
+    period: u64,
+    front_key: ID,
+    rolling_total: u64,
+    rolling_count: u64,
+}
+
+public(package) fun average(
+    fee_averager: &mut JumpHistoryFeeAverager,
+    entries: &LinkedTable<ID, LinkedTable<ID, JumpHistoryEntry>>,
+) {}
+
 public struct JumpHistory has store {
     entries: LinkedTable<ID, LinkedTable<ID, JumpHistoryEntry>>,
+    avg_fee_24h: u64,
 }
 
 public(package) fun new(ctx: &mut TxContext): JumpHistory {
