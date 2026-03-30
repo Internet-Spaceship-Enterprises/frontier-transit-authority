@@ -8,4 +8,4 @@ world = { git = "https://github.com/evefrontier/world-contracts.git", rev="v0.0.
 #world = { local = "/workspace/world-contracts/contracts/world" }
 
 [environments]
-localnet = "e525bf7c"
+localnet = "fedde9c8"
