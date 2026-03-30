@@ -4,23 +4,22 @@ module frontier_gate_network::frontier_gate_network;
 */
 module fgn::fgn;
 
+use sui::clock::{Self, Clock};
+use sui::linked_table::{Self, LinkedTable};
 use sui::package::Publisher;
 use sui::table::{Self, Table};
-use sui::linked_table::{Self, LinkedTable};
 use sui::transfer::Receiving;
-use sui::clock::Clock;
-use world:: {
-    energy::EnergyConfig,
-    gate::{Self, Gate},
-    access::{Self, OwnerCap},
-    character::{Self, Character},
-    network_node::{Self, NetworkNode},
-};
+use world::access::{Self, OwnerCap, ReturnOwnerCapReceipt};
+use world::character::Character;
+use world::energy::EnergyConfig;
+use world::gate::{Self, Gate};
+use world::network_node::{Self, NetworkNode};
 
 #[error(code = 0)]
 const EGateOwnerCapMismatch: vector<u8> = b"OwnerCap<Gate> does not belong to this Gate";
 #[error(code = 1)]
-const ENetworkNodeOwnerCapMismatch: vector<u8> = b"OwnerCap<NetworkNode> does not belong to this NetworkNode";
+const ENetworkNodeOwnerCapMismatch: vector<u8> =
+    b"OwnerCap<NetworkNode> does not belong to this NetworkNode";
 #[error(code = 2)]
 const EGateLinked: vector<u8> = b"To transfer a gate to FGN, the gate cannot be linked";
 #[error(code = 3)]
@@ -28,13 +27,21 @@ const EGateNotInNetwork: vector<u8> = b"This gate is not part of the Frontier Ga
 #[error(code = 4)]
 const EGateNotYours: vector<u8> = b"You cannot modify the fee for a gate you did not assign to FGN";
 #[error(code = 5)]
-const ENotEnoughNotice: vector<u8> = b"You have not provided enough notice for the fee change (takes_effect_on is too soon)";
+const ENotEnoughNotice: vector<u8> =
+    b"You have not provided enough notice for the fee change (takes_effect_on is too soon)";
 #[error(code = 6)]
-const EFeeChangePending: vector<u8> = b"You cannot schedule a fee change when there is already a fee change pending";
+const EFeeChangePending: vector<u8> =
+    b"You cannot schedule a fee change when there is already a fee change pending";
 #[error(code = 7)]
 const ENoFeeActive: vector<u8> = b"No jump fee is currently active";
 #[error(code = 8)]
 const EFeeIncreaseTooLarge: vector<u8> = b"This is too large of a fee increase";
+#[error(code = 9)]
+const ETransferNetworkNodeAsWell: vector<u8> =
+    b"If the gate is connected to a network node that is not already owned by FGN, then it must be provided (use the `transfer_gate_and_network_node` function)";
+#[error(code = 10)]
+const ENoNetworkNodeProvided: vector<u8> =
+    b"If the gate is connected to a network node, then the network node must be provided";
 
 // The minimum requirement for how long it takes for a new fee to take effect
 const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
@@ -57,22 +64,31 @@ public struct Fee has store {
     submitted_on: u64,
 }
 
-public struct GateRecord has store { 
+public struct GateRecord has store {
     transferred_on: u64,
     transferred_from_character_id: ID,
     transferred_from_wallet_addr: address,
     gate_id: ID,
     gate_owner_cap_id: ID,
-    network_node_id: ID,
-    network_node_owner_cap_id: ID,
+    network_node_id: Option<ID>,
+    network_node_owner_cap_id: Option<ID>,
     // Where the key is the update timestamp and the value is the new fee structure
     fee_history: LinkedTable<u64, Fee>,
+}
+
+public struct NetworkNodeRecord has store {
+    transferred_on: u64,
+    transferred_from_character_id: ID,
+    transferred_from_wallet_addr: address,
+    network_node_id: ID,
+    network_node_owner_cap_id: ID,
 }
 
 public struct FrontierGateNetwork has key {
     id: UID,
     // The key is the Gate ID, the value is the GateRecord
     gate_table: Table<ID, GateRecord>,
+    network_node_table: Table<ID, NetworkNodeRecord>,
 }
 
 // Called only once, upon module publication. It must be
@@ -85,58 +101,176 @@ fun init(otw: FGN, ctx: &mut TxContext) {
     transfer::public_transfer(publisher, ctx.sender());
 
     // Transfers the DeveloperCap to the sender (publisher).
-    transfer::transfer(DeveloperCap {
-        id: object::new(ctx)
-    }, ctx.sender());
+    transfer::transfer(
+        DeveloperCap {
+            id: object::new(ctx),
+        },
+        ctx.sender(),
+    );
 
     // Create the Gate Network object and make it shared
     // TODO: should this use a OTW?
     transfer::share_object(FrontierGateNetwork {
         id: object::new(ctx),
         gate_table: table::new<ID, GateRecord>(ctx),
+        network_node_table: table::new<ID, NetworkNodeRecord>(ctx),
     });
 }
 
-public fun transfer_gate(
-    gate_network: &mut FrontierGateNetwork, 
-    current_owner: &mut Character, 
-    gate: &mut Gate, 
-    gate_owner_cap: Receiving<OwnerCap<Gate>>,
-    network_node: &mut NetworkNode, 
-    network_node_owner_cap: Receiving<OwnerCap<NetworkNode>>, 
+public fun transfer_gate_and_network_node(
+    gate_network: &mut FrontierGateNetwork,
+    current_owner: &mut Character,
+    gate: &mut Gate,
+    gate_owner_cap: OwnerCap<Gate>,
+    gate_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node: &mut NetworkNode,
+    network_node_owner_cap: OwnerCap<NetworkNode>,
+    network_node_owner_cap_receipt: ReturnOwnerCapReceipt,
     jump_fee: u64,
     energy_config: &EnergyConfig,
     clock: &Clock,
-    ctx: &mut TxContext
+    ctx: &mut TxContext,
+) {
+    let nn_id = object::id(network_node);
+    let nn_owner_cap_id = object::id(&network_node_owner_cap);
+    // Run some access checks to ensure this is the right owner cap for this network node
+    assert!(access::is_authorized(&network_node_owner_cap, nn_id), ENetworkNodeOwnerCapMismatch);
+    assert!(
+        network_node::owner_cap_id(network_node) == nn_owner_cap_id,
+        ENetworkNodeOwnerCapMismatch,
+    );
+
+    // If the gate is connected to a network node and is online, offline it
+    if (gate.is_online()) {
+        gate.offline(network_node, energy_config, &gate_owner_cap);
+    };
+
+    // Do the gate transfer
+    transfer_gate(
+        gate_network,
+        current_owner,
+        gate,
+        gate_owner_cap,
+        gate_owner_cap_receipt,
+        option::some(nn_id),
+        option::some(nn_owner_cap_id),
+        jump_fee,
+        clock,
+        ctx,
+    );
+
+    // Transfer the network node ownership to FGN
+    access::transfer_owner_cap_with_receipt(
+        network_node_owner_cap,
+        network_node_owner_cap_receipt,
+        object::id_address(gate_network),
+        ctx,
+    );
+
+    // Put the record in the table
+    gate_network
+        .network_node_table
+        .add(
+            object::id(network_node),
+            NetworkNodeRecord {
+                transferred_on: clock.timestamp_ms(),
+                transferred_from_character_id: object::id(current_owner),
+                transferred_from_wallet_addr: ctx.sender(),
+                network_node_id: object::id(network_node),
+                network_node_owner_cap_id: nn_owner_cap_id,
+            },
+        );
+}
+
+public fun transfer_gate_only(
+    gate_network: &mut FrontierGateNetwork,
+    current_owner: &mut Character,
+    gate: &mut Gate,
+    gate_owner_cap: OwnerCap<Gate>,
+    gate_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node: &mut Option<NetworkNode>,
+    jump_fee: u64,
+    energy_config: &EnergyConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let mut network_node_id_opt = option::none<ID>();
+    let mut network_node_owner_cap_id_opt = option::none<ID>();
+    let energy_source_id = gate.energy_source_id();
+    if (energy_source_id.is_some()) {
+        let network_node_id = *energy_source_id.borrow();
+        // If the gate is connected to a network node, assert that we already own it.
+        // Otherwise, they need to call the function that transfers NetworkNode ownership as well.
+        assert!(
+            gate_network.network_node_table.contains(network_node_id),
+            ETransferNetworkNodeAsWell,
+        );
+        // If the gate is connected to a network node, assert that a NetworkNode object was provided
+        assert!(network_node.is_some(), ENoNetworkNodeProvided);
+
+        network_node_id_opt = option::some(network_node_id);
+        network_node_owner_cap_id_opt =
+            option::some(gate_network
+                .network_node_table
+                .borrow(network_node_id)
+                .network_node_owner_cap_id);
+
+        // If the gate is connected to a network node and is online, offline it
+        if (gate.is_online()) {
+            gate.offline(network_node.borrow_mut(), energy_config, &gate_owner_cap);
+        };
+    };
+
+    transfer_gate(
+        gate_network,
+        current_owner,
+        gate,
+        gate_owner_cap,
+        gate_owner_cap_receipt,
+        network_node_id_opt,
+        network_node_owner_cap_id_opt,
+        jump_fee,
+        clock,
+        ctx,
+    );
+}
+
+fun transfer_gate(
+    gate_network: &mut FrontierGateNetwork,
+    current_owner: &Character,
+    gate: &mut Gate,
+    gate_owner_cap: OwnerCap<Gate>,
+    gate_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node_id: Option<ID>,
+    network_node_owner_cap_id: Option<ID>,
+    jump_fee: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
 ) {
     // Ensure the gate is not linked, because we won't be able to unlink it if we
     // don't own the other side.
     assert!(gate.linked_gate_id().is_none(), EGateLinked);
 
-    // Borrow the owner cap for the gate
-    let (borrowed_gate_owner_cap, gate_receipt) = character::borrow_owner_cap<Gate>(current_owner, gate_owner_cap, ctx);
     let gate_id = object::id(gate);
-    let gate_owner_cap_id = object::id(&borrowed_gate_owner_cap);
+    let gate_owner_cap_id = object::id(&gate_owner_cap);
     // Run some access checks to ensure this is the right owner cap for this gate
-    assert!(access::is_authorized(&borrowed_gate_owner_cap, gate_id), EGateOwnerCapMismatch);
+    assert!(access::is_authorized(&gate_owner_cap, gate_id), EGateOwnerCapMismatch);
     assert!(gate::owner_cap_id(gate) == gate_owner_cap_id, EGateOwnerCapMismatch);
 
-    // Borrow the owner cap for the network node
-    let (borrowed_network_owner_cap, network_receipt) = character::borrow_owner_cap<NetworkNode>(current_owner, network_node_owner_cap, ctx);
-    let nn_id = object::id(network_node);
-    let nn_owner_cap_id = object::id(&borrowed_network_owner_cap);
-    // Run some access checks to ensure this is the right owner cap for this network node
-    assert!(access::is_authorized(&borrowed_network_owner_cap, nn_id), ENetworkNodeOwnerCapMismatch);
-    assert!(network_node::owner_cap_id(network_node) == nn_owner_cap_id, ENetworkNodeOwnerCapMismatch);
-    
     // Use the borrowed owner cap to prepare the gate
-    prepare_gate(gate, &borrowed_gate_owner_cap, network_node, &borrowed_network_owner_cap, energy_config, ctx);
+    prepare_gate(
+        gate,
+        &gate_owner_cap,
+        ctx,
+    );
 
     // Transfer the gate ownership to FGN
-    access::transfer_owner_cap_with_receipt(borrowed_gate_owner_cap, gate_receipt, object::id_address(gate_network), ctx);
-    // Transfer the network node ownership to FGN
-    access::transfer_owner_cap_with_receipt(borrowed_network_owner_cap, network_receipt, object::id_address(gate_network), ctx);
-
+    access::transfer_owner_cap_with_receipt(
+        gate_owner_cap,
+        gate_owner_cap_receipt,
+        object::id_address(gate_network),
+        ctx,
+    );
     // Record the important values
     let mut record = GateRecord {
         transferred_on: clock.timestamp_ms(),
@@ -144,41 +278,36 @@ public fun transfer_gate(
         transferred_from_wallet_addr: ctx.sender(),
         gate_id: gate_id,
         gate_owner_cap_id: gate_owner_cap_id,
-        network_node_id: nn_id,
-        network_node_owner_cap_id: nn_owner_cap_id,
+        network_node_id: network_node_id,
+        network_node_owner_cap_id: network_node_owner_cap_id,
         fee_history: linked_table::new<u64, Fee>(ctx),
     };
 
     // Add the initial fee, taking effect immediately
-    record.fee_history.push_back(clock.timestamp_ms(), Fee {
-        takes_effect_on: clock.timestamp_ms(),
-        submitted_on: clock.timestamp_ms(),
-        jump_fee: jump_fee,
-    });
+    record
+        .fee_history
+        .push_back(
+            clock.timestamp_ms(),
+            Fee {
+                takes_effect_on: clock.timestamp_ms(),
+                submitted_on: clock.timestamp_ms(),
+                jump_fee: jump_fee,
+            },
+        );
 
     // Put the record in the table
     gate_network.gate_table.add(gate_id, record)
 }
 
 /// Prepares a gate for FGN operation
-fun prepare_gate(
-    gate: &mut Gate, 
-    gate_owner_cap: &OwnerCap<Gate>,
-    network_node: &mut NetworkNode, 
-    network_node_owner_cap: &OwnerCap<NetworkNode>, 
-    energy_config: &EnergyConfig,
-    ctx: &mut TxContext
-) {
-    if(gate.is_online()) {
-        gate.offline(network_node, energy_config, gate_owner_cap);
-    };
+fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, ctx: &mut TxContext) {
     // TODO: set metadata name using the system/location
     gate.update_metadata_name(gate_owner_cap, b"Frontier Gate Network".to_string());
     // TODO: configure the authorization extension
 }
 
-public fun change_fee(
-    gate_network: &mut FrontierGateNetwork, 
+public fun update_fee(
+    gate_network: &mut FrontierGateNetwork,
     gate_id: ID,
     jump_fee: u64,
     takes_effect_on: u64,
@@ -205,27 +334,31 @@ public fun change_fee(
 
     // Get the latest change
     let latest_change = record.fee_history.borrow(*last_modified_key_option.borrow());
-    
+
     // Ensure that the latest change is active, not pending.
     // This prevents scheduling a new change when the last change hasn't taken effect yet.
     assert!(latest_change.takes_effect_on <= clock.timestamp_ms(), EFeeChangePending);
 
-    assert!((jump_fee - latest_change.jump_fee) * 100000 / latest_change.jump_fee <= FEE_CHANGE_MAX_PERCENTAGE_THOUSANTHS, EFeeIncreaseTooLarge);
+    assert!(
+        (jump_fee - latest_change.jump_fee) * 100000 / latest_change.jump_fee <= FEE_CHANGE_MAX_PERCENTAGE_THOUSANTHS,
+        EFeeIncreaseTooLarge,
+    );
 
     // Schedule the change
-    record.fee_history.push_back(clock.timestamp_ms(), Fee {
-        jump_fee: jump_fee,
-        takes_effect_on: takes_effect_on,
-        submitted_on: clock.timestamp_ms(),
-    });
+    record
+        .fee_history
+        .push_back(
+            clock.timestamp_ms(),
+            Fee {
+                jump_fee: jump_fee,
+                takes_effect_on: takes_effect_on,
+                submitted_on: clock.timestamp_ms(),
+            },
+        );
 }
 
 /// Retrieves the current per-jump fee (in EVE tokens) for a given gate
-public fun current_fee(
-    gate_network: &FrontierGateNetwork, 
-    gate_id: ID,
-    clock: &Clock,
-): u64 {
+public fun current_fee(gate_network: &FrontierGateNetwork, gate_id: ID, clock: &Clock): u64 {
     // Ensure the gate is actually part of the network
     assert!(gate_network.gate_table.contains(gate_id), EGateNotInNetwork);
 
@@ -245,7 +378,7 @@ public fun current_fee(
     let latest_fee = fee_history.borrow(latest_fee_key);
 
     // If the latest fee is active, use it
-    if(latest_fee.takes_effect_on <= clock.timestamp_ms()) {
+    if (latest_fee.takes_effect_on <= clock.timestamp_ms()) {
         latest_fee.jump_fee
     } else {
         // Otherwise, get the previous fee, which MUST be active since we don't allow
@@ -260,8 +393,6 @@ public fun current_fee(
     }
 }
 
-public fun gate_count(
-    gate_network: &FrontierGateNetwork, 
-): u64 {
+public fun gate_count(gate_network: &FrontierGateNetwork): u64 {
     gate_network.gate_table.length()
 }

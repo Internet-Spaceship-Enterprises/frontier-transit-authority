@@ -9,9 +9,6 @@ echo "$output" > deploy.json
 packageId=$(echo "$output" | jq -r '.objectChanges | first(.[] | select(.type == "published")) | .packageId')
 fgnId=$(echo "$output" | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | endswith("::fgn::FrontierGateNetwork"))) | .objectId')
 
-echo "Package ID: $packageId"
-echo "FGN ID: $fgnId"
-
 echo "
 export const FGN_PACKAGE_ID = \"$packageId\";
 export const FGN_OBJECT_ID = \"$fgnId\";
