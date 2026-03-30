@@ -22,9 +22,10 @@ const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
 // The maximum fee percentage increase at a time
 const FEE_CHANGE_MAX_PERCENTAGE: u64 = 20; // 20%
 
-// Dynamic field name for the owner character
-// TODO: delete
-const OWNER_CHARACTER_FIELD_NAME: vector<u8> = b"owner_character";
+/// The period (in milliseconds) to look at when calculating the average jump fee (historical data) for a killmail penalty
+const BLACKLIST_PENALTY_AVERAGE_PERIOD: u64 = 30*24*60*60*1000; // Average over the past 30 days
+/// The default average jump fee to use for calculating killmail penalties if there isn't enough historical data to calculate an average
+const BLACKLIST_DEFAULT_AVG_JUMP_FEE: u64 = 1000;
 
 public(package) fun bounty_fee(): u64 {
     BOUNTY_FEE
@@ -54,6 +55,10 @@ public(package) fun fee_change_max_percentage(): u64 {
     FEE_CHANGE_MAX_PERCENTAGE
 }
 
-public(package) fun owner_character_field_name(): vector<u8> {
-    OWNER_CHARACTER_FIELD_NAME
+public(package) fun blacklist_penalty_average_period(): u64 {
+    BLACKLIST_PENALTY_AVERAGE_PERIOD
+}
+
+public(package) fun blacklist_default_avg_jump_fee(): u64 {
+    BLACKLIST_DEFAULT_AVG_JUMP_FEE
 }

@@ -9,11 +9,14 @@ use fta::blacklist::{Self, Blacklist};
 use fta::gate_registry::{Self, GateRegistry};
 use fta::jump_estimate::JumpEstimate;
 use fta::jump_history::{Self, JumpHistory};
+use fta::killmail_registry::{Self, KillmailRegistry};
 use fta::network_node_registry::{Self, NetworkNodeRegistry};
 use sui::balance::{Self, Balance};
 use sui::clock::Clock;
 use sui::package::Publisher;
 use world::gate::Gate;
+use world::killmail::Killmail;
+use world::object_registry::ObjectRegistry;
 
 #[error(code = 1)]
 const EGateNotInNetwork: vector<u8> = b"This gate is not part of the Frontier Transit Authority";
@@ -39,6 +42,7 @@ public struct FrontierTransitAuthority has key {
     gate_registry: GateRegistry,
     jump_history: JumpHistory,
     network_node_registry: NetworkNodeRegistry,
+    killmail_registry: KillmailRegistry,
     blacklist: Blacklist,
     // The balance of the bounty account (for paying bounties)
     bounty_balance: Balance<EVE>,
@@ -69,6 +73,7 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         gate_registry: gate_registry::new(ctx),
         network_node_registry: network_node_registry::new(ctx),
         jump_history: jump_history::new(ctx),
+        killmail_registry: killmail_registry::new(ctx),
         blacklist: blacklist::new(ctx),
         bounty_balance: balance::zero(),
         developer_balance: balance::zero(),
@@ -150,18 +155,41 @@ public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &G
 // Blacklist operations
 //=================================
 
-public(package) fun blacklist_add(
+/// Processes a batch of killmails, updating the gate and network node registries and the blacklist as necessary.
+public fun process_killmails(
     fta: &mut FrontierTransitAuthority,
-    character_id: ID,
-    penalty_multiplier: u64,
-    permanent: bool,
-    penalty_amount: u64,
+    killmails: &vector<Killmail>,
+    object_registry: &ObjectRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    fta
-        .blacklist_mut()
-        .add(character_id, penalty_multiplier, permanent, penalty_amount, clock, ctx);
+    let len = killmails.length();
+    let mut i = 0;
+    while (i < len) {
+        let killmail = vector::borrow(killmails, i); // borrow element by index
+        fta
+            .killmail_registry
+            .process_killmail(
+                killmail,
+                &mut fta.gate_registry,
+                &mut fta.network_node_registry,
+                &mut fta.jump_history,
+                &mut fta.blacklist,
+                object_registry,
+                clock,
+                ctx,
+            );
+        i = i + 1;
+    }
+}
+
+//=================================
+// Gate operations
+//=================================
+
+/// Asserts that a gate is owned by the FTA. Use primarily for testing.
+public fun assert_gate_managed(fta: &mut FrontierTransitAuthority, gate: &Gate) {
+    fta.gate_registry.registered(gate);
 }
 
 //=================================

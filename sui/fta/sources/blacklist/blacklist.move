@@ -1,7 +1,11 @@
 module fta::blacklist;
 
+use fta::blacklist_penalties::{Self, BlacklistPenalties};
 use sui::clock::Clock;
+use sui::derived_object::derive_address;
 use sui::linked_table::{Self, LinkedTable};
+use world::killmail::Killmail;
+use world::object_registry::ObjectRegistry;
 
 public struct PermanentBlacklistRecord has store {
     character_id: ID,
@@ -14,6 +18,9 @@ public struct PermanentBlacklistRecord has store {
 }
 
 public struct TemporaryBlacklistRecord has store {
+    // The ID of the killmail that caused this blacklist record
+    killmail_id: ID,
+    // The ID of the character that is blacklisted
     character_id: ID,
     /// When the blacklisting started
     issued_at: u64,
@@ -41,31 +48,35 @@ public struct BlacklistCharacter has store {
 public struct Blacklist has store {
     // All blacklisted records
     records: LinkedTable<ID, BlacklistCharacter>,
+    penalties: BlacklistPenalties,
 }
 
-// TODO: figure out a way to scale the penalty multiplier based on the severity of the offense and the duration of the blacklist.
 public(package) fun new(ctx: &mut TxContext): Blacklist {
     Blacklist {
         records: linked_table::new(ctx),
+        penalties: blacklist_penalties::new(),
     }
 }
 
 /// Adds a blacklist record for a character.
 public(package) fun add(
     blacklist: &mut Blacklist,
-    character_id: ID,
-    penalty_multiplier: u64,
+    killmail: &Killmail,
     permanent: bool,
-    penalty_amount: u64,
+    average_jump_fee: u64,
+    object_registry: &ObjectRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    // This derives the on-chain character ID in the same way the killmail does
+    let killer_character_id = derive_address(object_registry.id(), killmail.killer_id()).to_id();
+
     // If there's no blacklist for this character yet, create one
-    if (!blacklist.records.contains(character_id)) {
+    if (!blacklist.records.contains(killer_character_id)) {
         blacklist
             .records
             .push_back(
-                character_id,
+                killer_character_id,
                 BlacklistCharacter {
                     permanent: linked_table::new(ctx),
                     temporary: linked_table::new(ctx),
@@ -76,23 +87,33 @@ public(package) fun add(
             );
     };
 
-    let blacklist_character = blacklist.records.borrow_mut(character_id);
+    // This information is not currently available from the killmail.
+    // For now, use the Heavy Gate type ID for all killmails.
+    // TODO: update once destroyed type ID is available from the killmail.
+    let destroyed_type_id = 84955;
+
+    let penalty = blacklist.penalties.get(destroyed_type_id);
+
+    let blacklist_character = blacklist.records.borrow_mut(killer_character_id);
     if (permanent) {
         // Create the record to be inserted
         let record = PermanentBlacklistRecord {
-            character_id: character_id,
+            character_id: killer_character_id,
             issued_at: clock.timestamp_ms(),
-            penalty_multiplier: penalty_multiplier,
+            penalty_multiplier: penalty.destroyed_penalty_factor(),
         };
         blacklist_character.permanent.push_back(record.issued_at, record);
         // Add the new record to the permanent penalty sum
-        blacklist_character.permanent_sum = blacklist_character.permanent_sum + penalty_multiplier;
+        blacklist_character.permanent_sum =
+            blacklist_character.permanent_sum + 
+            penalty.destroyed_penalty_factor();
     } else {
         let record = TemporaryBlacklistRecord {
-            character_id: character_id,
+            killmail_id: killmail.id(),
+            character_id: killer_character_id,
             issued_at: clock.timestamp_ms(),
-            penalty_multiplier: penalty_multiplier,
-            amount_due: penalty_amount,
+            penalty_multiplier: penalty.destroyed_penalty_factor(),
+            amount_due: penalty.damaged_penalty_fee_multiplier() *average_jump_fee,
             paid_down: 0,
         };
         let issued_at = record.issued_at;
@@ -103,7 +124,8 @@ public(package) fun add(
             blacklist_character.temporary_front_pointer = option::some(issued_at);
         };
         // Add the new record to the temporary penalty sum
-        blacklist_character.temporary_sum = blacklist_character.temporary_sum + penalty_multiplier;
+        blacklist_character.temporary_sum =
+            blacklist_character.temporary_sum + penalty.destroyed_penalty_factor();
     };
 }
 

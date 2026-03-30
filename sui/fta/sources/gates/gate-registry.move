@@ -3,6 +3,7 @@ module fta::gate_registry;
 use fta::gate_record::GateRecord;
 use fta::management_cap::ManagementCap;
 use sui::linked_table::{Self, LinkedTable};
+use world::access::OwnerCap;
 use world::gate::Gate;
 
 #[error(code = 1)]
@@ -60,16 +61,22 @@ public(package) fun get_by_id_mut(registry: &mut GateRegistry, gate_id: ID): &mu
     registry.table.borrow_mut(gate_id)
 }
 
-public(package) fun deregister(registry: &mut GateRegistry, gate: &Gate) {
+public(package) fun deregister(
+    registry: &mut GateRegistry,
+    gate: &mut Gate,
+    owner_cap: &OwnerCap<Gate>,
+) {
     assert!(registry.registered(gate), EGateNotInNetwork);
+    // Remove the extension from the gate
+    gate.revoke_extension_authorization(owner_cap);
     registry.table.remove(object::id(gate)).destroy();
-    // TODO: deregister the auth extension
 }
 
-public(package) fun deregister_by_record(registry: &mut GateRegistry, record: &GateRecord) {
-    assert!(registry.registered_by_record(record), EGateNotInNetwork);
-    registry.table.remove(record.gate_id()).destroy();
-    // TODO: deregister the auth extension
+/// Process the destruction of a gate
+public(package) fun destroyed(registry: &mut GateRegistry, gate_id: ID) {
+    assert!(registry.registered_by_id(gate_id), EGateNotInNetwork);
+    registry.table.remove(gate_id).destroy();
+    // Since it's destroyed, we don't need to deregister the extension
 }
 
 // Returns a list of the IDs of all gates managed by the FTA

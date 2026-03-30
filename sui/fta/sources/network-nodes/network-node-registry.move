@@ -91,12 +91,9 @@ public(package) fun deregister(registry: &mut NetworkNodeRegistry, node: &Networ
     registry.table.remove(object::id(node)).destroy();
 }
 
-public(package) fun deregister_by_record(
-    registry: &mut NetworkNodeRegistry,
-    record: &NetworkNodeRecord,
-) {
-    assert!(registry.registered_by_record(record), ENetworkNodeNotRegistered);
-    registry.table.remove(record.network_node_id()).destroy();
+public(package) fun deregister_by_id(registry: &mut NetworkNodeRegistry, network_node_id: ID) {
+    assert!(registry.registered_by_id(network_node_id), ENetworkNodeNotRegistered);
+    registry.table.remove(network_node_id).destroy();
 }
 
 // Returns a list of the IDs of all network nodes managed by the FTA

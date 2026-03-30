@@ -403,14 +403,13 @@ public fun return_gate_to_owner(
     owner_cap_ticket: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
 ) {
-    let owner_cap = access::borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap_ticket, ctx);
-    // Remove the extension from the gate
-    gate.revoke_extension_authorization(&owner_cap);
-
     let record = fta.gate_registry().get(gate);
-    // Send the OwnerCap to the entity that holds the ManagementCap
-    world::access::transfer_owner_cap(owner_cap, record.management_cap_owner_address());
+    let owner_addr = record.management_cap_owner_address();
+    let owner_cap = access::borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap_ticket, ctx);
 
     // Remove the gate from the network
-    fta.gate_registry_mut().deregister(gate);
+    fta.gate_registry_mut().deregister(gate, &owner_cap);
+
+    // Send the OwnerCap to the entity that holds the ManagementCap
+    world::access::transfer_owner_cap(owner_cap, owner_addr);
 }
