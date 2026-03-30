@@ -187,6 +187,14 @@ public(package) fun get_network_node_record(
     fta.network_node_table.borrow(object::id(network_node))
 }
 
+public(package) fun get_network_node_record_mut(
+    fta: &mut FrontierTransitAuthority,
+    network_node: &NetworkNode,
+): &mut NetworkNodeRecord {
+    assert!(fta.network_node_table.contains(object::id(network_node)), ENetworkNodeNotRegistered);
+    fta.network_node_table.borrow_mut(object::id(network_node))
+}
+
 public(package) fun get_network_node_record_for_gate(
     fta: &FrontierTransitAuthority,
     gate: &Gate,
@@ -204,22 +212,6 @@ public(package) fun network_node_registered(
 ): bool {
     fta.network_node_table.contains(object::id(network_node))
 }
-
-// Returns a unique key for a pair of gates, regardless of the order in which they are given
-// public(package) fun gate_pair_hash(gate_a_id: &ID, gate_b_id: &ID): vector<u8> {
-//     let mut a_addr_bytes = object::id_to_bytes(gate_a_id);
-//     let mut b_addr_bytes = object::id_to_bytes(gate_b_id);
-//     let a_int = bcs::peel_u256(&mut bcs::new(a_addr_bytes));
-//     let b_int = bcs::peel_u256(&mut bcs::new(b_addr_bytes));
-
-//     if (a_int > b_int) {
-//         a_addr_bytes.append(b_addr_bytes);
-//         hash::sha3_256(a_addr_bytes)
-//     } else {
-//         b_addr_bytes.append(a_addr_bytes);
-//         hash::sha3_256(b_addr_bytes)
-//     }
-// }
 
 public fun gate_count(fta: &FrontierTransitAuthority): u64 {
     fta.gate_table.length()

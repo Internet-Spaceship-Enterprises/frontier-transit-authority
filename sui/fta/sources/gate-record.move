@@ -29,6 +29,8 @@ public(package) fun new(
     clock: &Clock,
     ctx: &mut TxContext,
 ): GateRecord {
+    //TODO: must switch to management cap
+    ERROR;
     GateRecord {
         transferred_on: transferred_on,
         transferred_from_character_id: transferred_from_character_id,
@@ -58,9 +60,7 @@ public(package) fun update_fee(
     jump_fee: u64,
     takes_effect_on: u64,
     clock: &Clock,
-    ctx: &TxContext,
 ) {
-    assert!(record.transferred_from_wallet_addr == ctx.sender(), EGateNotYours);
     record.fee_history.update_fee(jump_fee, takes_effect_on, clock);
 }
 
