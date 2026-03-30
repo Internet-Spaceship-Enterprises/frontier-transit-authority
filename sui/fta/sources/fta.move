@@ -18,6 +18,7 @@ use sui::package::{Self, Publisher};
 use world::character::Character;
 use world::gate::Gate;
 use world::killmail::Killmail;
+use world::network_node::NetworkNode;
 use world::object_registry::ObjectRegistry;
 
 #[error(code = 1)]
@@ -198,6 +199,24 @@ public fun process_killmails(
 public fun assert_gate_managed(fta: &mut FrontierTransitAuthority, gate: &Gate) {
     fta.gate_registry.registered(gate);
 }
+
+//=================================
+// Network node operations
+//=================================
+
+/// Loops through provided network nodes and performs a status check on each.
+/// This is primarily for tracking the online status of network nodes over time,
+/// which can be used to inform bounties on network nodes that are frequently offline.
+public fun network_node_update(
+    fta: &mut FrontierTransitAuthority,
+    network_nodes: &vector<NetworkNode>,
+    clock: &Clock,
+) { let len = network_nodes.length(); let mut i = 0; while (i < len) {
+        let network_node = vector::borrow(network_nodes, i); // borrow element by index
+        let record = fta.network_node_registry.get_by_id_mut(network_node.id());
+        record.online_check(network_node, clock);
+        i = i + 1;
+    } }
 
 //=================================
 // Jump operations

@@ -11,6 +11,9 @@ use sui::table::{Self, Table};
 use world::killmail::Killmail;
 use world::object_registry::ObjectRegistry;
 
+#[error(code = 1)]
+const EKillmailAlreadyProcessed: vector<u8> = b"This killmail has already been processed";
+
 public struct KillmailRegistry has store {
     processed_killmails: Table<ID, bool>,
 }
@@ -32,10 +35,8 @@ public(package) fun process_killmail(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    if (registry.processed_killmails.contains(killmail.id())) {
-        // Killmail has already been processed, skip it
-        return
-    };
+    // Ensure the killmail hasn't already been processed
+    assert!(!registry.processed_killmails.contains(killmail.id()), EKillmailAlreadyProcessed);
 
     // Mark that we've processed this killmail
     registry.processed_killmails.add(killmail.id(), true);
@@ -55,23 +56,28 @@ public(package) fun process_killmail(
         *avg_jump_fee_opt.borrow()
     };
 
-    let mut belongs_to_fta = false;
+    let mut deserves_blacklisting = false;
 
     if (killmail.is_structure_loss()) {
         // Check if the killmail is for a gate or a network node
         if (gate_registry.registered_by_id(victim_object_id)) {
-            belongs_to_fta = true;
+            deserves_blacklisting = true;
             // The killmail is for a gate, so we need to update the gate registry
             gate_registry.destroyed(victim_object_id);
         } else if (network_node_registry.registered_by_id(victim_object_id)) {
-            belongs_to_fta = true;
+            let record = network_node_registry.get_by_id_mut(victim_object_id);
+
+            // Only punish for the kill if the network node's uptime is above the minimum requirement (node is in good standing)
+            deserves_blacklisting =
+                record.uptime_avg(constants::network_node_uptime_requirement_period(), clock) >= constants::network_node_uptime_requirement_for_blacklist();
+
             // The killmail is for a network node, so we need to update the network node registry
             network_node_registry.deregister_by_id(victim_object_id);
         }
     };
 
     // If it was an FTA asset, we must administer punishment
-    if (belongs_to_fta) {
+    if (deserves_blacklisting) {
         blacklist.add(
             killmail,
             false,

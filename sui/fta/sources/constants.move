@@ -31,7 +31,12 @@ const BLACKLIST_DEFAULT_AVG_JUMP_FEE: u64 = 1000;
 const UPGRADE_VOTE_VALIDITY_DURATION: u64 = 7 * 24 * 60 * 60 * 1000; // 7 days
 /// How long, in milliseconds, to consider for tallying a character's vote weight for an upgrade proposal
 /// (i.e. how far back in time to look at their jump history to calculate their vote weight)
-const UPGRADE_VOTE_WEIGHT_DURATION: u64 = 60 * 24 * 60 * 60 * 1000; // 60 days
+const UPGRADE_VOTE_WEIGHT_DURATION: u64 = 6 * 30 * 24 * 60 * 60 * 1000; // 6 months
+
+/// The percentage of online time that network nodes must meet in order for their destruction to qualify for blacklisting/bounty
+const NETWORK_NODE_UPTIME_REQUIREMENT_FOR_BLACKLIST: u64 = 40; // 40% minimum uptime requirement
+/// The period (in milliseconds) over which to evaluate a network node's online performance for blacklisting decisions
+const NETWORK_NODE_UPTIME_REQUIREMENT_PERIOD: u64 = 30 * 24 * 60 * 60 * 1000; // Look at the past 30 days of online performance for blacklisting decisions
 
 public(package) fun bounty_fee(): u64 {
     BOUNTY_FEE
@@ -75,4 +80,12 @@ public(package) fun upgrade_vote_validity_duration(): u64 {
 
 public(package) fun upgrade_vote_weight_duration(): u64 {
     UPGRADE_VOTE_WEIGHT_DURATION
+}
+
+public(package) fun network_node_uptime_requirement_for_blacklist(): u64 {
+    NETWORK_NODE_UPTIME_REQUIREMENT_FOR_BLACKLIST
+}
+
+public(package) fun network_node_uptime_requirement_period(): u64 {
+    NETWORK_NODE_UPTIME_REQUIREMENT_PERIOD
 }

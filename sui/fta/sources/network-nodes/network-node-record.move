@@ -2,7 +2,9 @@ module fta::network_node_record;
 
 use fta::fee_history::{Self, FeeHistory};
 use fta::management_cap;
+use fta::multi_rolling_averager::{Self, MultiRollingAverager};
 use sui::clock::Clock;
+use sui::linked_table::{Self, LinkedTable};
 use world::network_node::NetworkNode;
 
 public struct NetworkNodeRecord has store {
@@ -16,6 +18,9 @@ public struct NetworkNodeRecord has store {
     fee_recipient: address,
     // Where the key is the update timestamp and the value is the new fee structure
     fee_history: FeeHistory,
+    // Online performance
+    online_performance: LinkedTable<u64, u8>,
+    online_performance_avg: MultiRollingAverager<u64, u8>,
 }
 
 public(package) fun new(
@@ -31,6 +36,8 @@ public(package) fun new(
     // Create a management cap for this network node
     let object_registration_id = ctx.fresh_object_address().to_id();
     let cap = management_cap::new<NetworkNode>(network_node_id, object_registration_id, ctx);
+    let online_performance = linked_table::new<u64, u8>(ctx);
+    let online_performance_avg = multi_rolling_averager::new(&online_performance, ctx);
     // Prepare the record
     let record = NetworkNodeRecord {
         object_registration_id: object_registration_id,
@@ -41,6 +48,8 @@ public(package) fun new(
         network_node_id: network_node_id,
         fee_recipient: fee_recipient,
         fee_history: fee_history::new(jump_fee, clock, ctx),
+        online_performance: online_performance,
+        online_performance_avg: online_performance_avg,
     };
     // Transfer the management cap to the original owner character
     cap.transfer(transferred_from_character_id.to_address());
@@ -58,8 +67,12 @@ public(package) fun destroy(record: NetworkNodeRecord) {
         network_node_id: _,
         fee_recipient: _,
         fee_history: fee_history,
+        online_performance: online_performance,
+        online_performance_avg: online_performance_avg,
     } = record;
     fee_history.destroy();
+    online_performance.drop();
+    online_performance_avg.destroy();
 }
 
 /// Updates the fee associated with a NetworkNode in a NetworkNodeRecord
@@ -107,4 +120,36 @@ public(package) fun current_fee(record: &NetworkNodeRecord, clock: &Clock): u64 
 
 public(package) fun fee_recipient(record: &NetworkNodeRecord): address {
     record.fee_recipient
+}
+
+// Checks if the network node is online and records that datapoint
+public(package) fun online_check(
+    record: &mut NetworkNodeRecord,
+    network_node: &NetworkNode,
+    clock: &Clock,
+) {
+    record
+        .online_performance
+        .push_back(
+            clock.timestamp_ms(),
+            if (network_node.is_network_node_online()) { 100 } else { 0 },
+        );
+}
+
+// Gets the average online performance (uptime) over a specified period
+public(package) fun uptime_avg(record: &mut NetworkNodeRecord, period: u64, clock: &Clock): u64 {
+    let avg = record
+        .online_performance_avg
+        .average!(
+            &record.online_performance,
+            period,
+            |timestamp| (*record.online_performance.borrow(*timestamp) as u64),
+            |timestamp| *timestamp,
+            clock,
+        );
+    if (avg.is_some()) {
+        *avg.borrow()
+    } else {
+        100
+    }
 }

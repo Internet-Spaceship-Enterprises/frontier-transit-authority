@@ -2,39 +2,45 @@ module fta::jump_history;
 
 use fta::blacklist::Blacklist;
 use fta::jump_estimate::JumpEstimate;
-use fta::rolling_averager::{Self, RollingAverager};
+use fta::multi_rolling_averager::{Self, MultiRollingAverager};
 use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
-use sui::table::{Self, Table};
 
 public struct JumpHistoryEntry has copy, store {
     estimate: JumpEstimate,
     character_id: ID,
 }
 
+// TODO: replace with MultiRollingAverager
 public struct CharacterJumpHistory has store {
     entries: LinkedTable<ID, JumpHistoryEntry>,
-    averages: Table<u64, RollingAverager<ID, JumpHistoryEntry>>,
+    averager: MultiRollingAverager<ID, JumpHistoryEntry>,
 }
 
 public struct JumpHistory has store {
     entries: LinkedTable<ID, JumpHistoryEntry>,
+    averager: MultiRollingAverager<ID, JumpHistoryEntry>,
     entries_by_character: LinkedTable<ID, CharacterJumpHistory>,
-    averages: Table<u64, RollingAverager<ID, JumpHistoryEntry>>,
 }
 
 fun new_character_jump_history(ctx: &mut TxContext): CharacterJumpHistory {
+    let table = linked_table::new(ctx);
+    let averager = multi_rolling_averager::new(&table, ctx);
+
     CharacterJumpHistory {
-        entries: linked_table::new(ctx),
-        averages: table::new(ctx),
+        entries: table,
+        averager: averager,
     }
 }
 
 public(package) fun new(ctx: &mut TxContext): JumpHistory {
+    let table = linked_table::new(ctx);
+    let averager = multi_rolling_averager::new(&table, ctx);
+
     JumpHistory {
         entries_by_character: linked_table::new(ctx),
-        entries: linked_table::new(ctx),
-        averages: table::new(ctx),
+        entries: table,
+        averager: averager,
     }
 }
 
@@ -67,18 +73,16 @@ public(package) fun fee_average(
     period: u64,
     clock: &Clock,
 ): Option<u64> {
-    // If we don't have an averager for this period, create one
-    if (!history.averages.contains(period)) {
-        history.averages.add(period, rolling_averager::new(&history.entries, period));
-    };
-    let averager = &mut history.averages[period];
     // Calculate the average over this period
-    averager.average!(
-        &history.entries,
-        |entry| entry.estimate.total_unscaled_base_fee(),
-        |entry| entry.estimate.prepared_at(),
-        clock,
-    )
+    history
+        .averager
+        .average!(
+            &history.entries,
+            period,
+            |key| history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| history.entries[*key].estimate.prepared_at(),
+            clock,
+        )
 }
 
 public(package) fun fee_average_for_character(
@@ -92,27 +96,28 @@ public(package) fun fee_average_for_character(
         return option::none()
     };
     let character_history = &mut history.entries_by_character[character_id];
-    // If we don't have an averager for this period, create one
-    if (!character_history.averages.contains(period)) {
-        character_history
-            .averages
-            .add(period, rolling_averager::new(&character_history.entries, period));
-    };
     // Calculate the average over this period
-    let averager = &mut character_history.averages[period];
-    // Calculate the average over this period
-    averager.average!(
-        &history.entries,
-        |entry| entry.estimate.total_unscaled_base_fee(),
-        |entry| entry.estimate.prepared_at(),
-        clock,
-    )
+    character_history
+        .averager
+        .average!(
+            &history.entries,
+            period,
+            |key| character_history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| character_history.entries[*key].estimate.prepared_at(),
+            clock,
+        )
 }
 
 public(package) fun fee_total(history: &mut JumpHistory, period: u64, clock: &Clock): u64 {
-    // Get the average, which will update all internal values
-    history.fee_average(period, clock);
-    history.averages[period].rolling_total()
+    history
+        .averager
+        .rolling_total!(
+            &history.entries,
+            period,
+            |key| history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| history.entries[*key].estimate.prepared_at(),
+            clock,
+        )
 }
 
 public(package) fun fee_total_for_character(
@@ -121,18 +126,32 @@ public(package) fun fee_total_for_character(
     period: u64,
     clock: &Clock,
 ): u64 {
-    // Get the average, which will update all internal values.
-    // If this returns none, we have no records for this character, so return 0
-    if (history.fee_average_for_character(character_id, period, clock).is_none()) {
+    // If there are no entries for this character, return none
+    if (!history.entries_by_character.contains(character_id)) {
         return 0
     };
-    history.entries_by_character[character_id].averages[period].rolling_total()
+    let character_history = &mut history.entries_by_character[character_id];
+    character_history
+        .averager
+        .rolling_total!(
+            &character_history.entries,
+            period,
+            |key| character_history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| character_history.entries[*key].estimate.prepared_at(),
+            clock,
+        )
 }
 
 public(package) fun fee_count(history: &mut JumpHistory, period: u64, clock: &Clock): u64 {
-    // Get the average, which will update all internal values
-    history.fee_average(period, clock);
-    history.averages[period].rolling_count()
+    history
+        .averager
+        .rolling_count!(
+            &history.entries,
+            period,
+            |key| history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| history.entries[*key].estimate.prepared_at(),
+            clock,
+        )
 }
 
 public(package) fun fee_count_for_character(
@@ -141,10 +160,18 @@ public(package) fun fee_count_for_character(
     period: u64,
     clock: &Clock,
 ): u64 {
-    // Get the average, which will update all internal values.
-    // If this returns none, we have no records for this character, so return 0
-    if (history.fee_average_for_character(character_id, period, clock).is_none()) {
+    // If there are no entries for this character, return none
+    if (!history.entries_by_character.contains(character_id)) {
         return 0
     };
-    history.entries_by_character[character_id].averages[period].rolling_count()
+    let character_history = &mut history.entries_by_character[character_id];
+    character_history
+        .averager
+        .rolling_count!(
+            &character_history.entries,
+            period,
+            |key| character_history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| character_history.entries[*key].estimate.prepared_at(),
+            clock,
+        )
 }

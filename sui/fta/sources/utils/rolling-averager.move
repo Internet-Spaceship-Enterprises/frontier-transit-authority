@@ -114,8 +114,8 @@ public(package) fun decrement_rolling_count<K: copy + drop + store, V: store>(
 public(package) macro fun average<$K: copy + drop + store, $V: store>(
     $averager: &mut RollingAverager<$K, $V>,
     $table: &LinkedTable<$K, $V>,
-    $value_lambda: |&$V| -> u64,
-    $timestamp_lambda: |&$V| -> u64,
+    $value_lambda: |&$K| -> u64,
+    $timestamp_lambda: |&$K| -> u64,
     $clock: &Clock,
 ): Option<u64> {
     let averager = $averager;
@@ -141,11 +141,11 @@ public(package) macro fun average<$K: copy + drop + store, $V: store>(
         while (true) {
             let front_key = averager.front_key();
             // If we've reached the front of the table or the current front entry is before the cutoff, then we're done
-            if (front_key.is_none() || $timestamp_lambda(&table[*front_key.borrow()]) < cutoff) {
+            if (front_key.is_none() || $timestamp_lambda(front_key.borrow()) < cutoff) {
                 break
             };
             // Otherwise, we're still after the cutoff, so include this entry in the average and move the front key back
-            averager.add_to_rolling_total($value_lambda(&table[*front_key.borrow()]));
+            averager.add_to_rolling_total($value_lambda(front_key.borrow()));
             averager.increment_rolling_count();
             // This entry is still within the cutoff, move the front key back
             averager.set_front_key(*table.prev(*front_key.borrow()));
@@ -162,11 +162,11 @@ public(package) macro fun average<$K: copy + drop + store, $V: store>(
                 table.next(*averager.front_key().borrow())
             };
             // If the next entry is none or it is after the cutoff, then we're done
-            if (next_key.is_none() || $timestamp_lambda(&table[*next_key.borrow()]) >= cutoff) {
+            if (next_key.is_none() || $timestamp_lambda(next_key.borrow()) >= cutoff) {
                 break
             };
             // The next entry is before the cutoff, so remove it from the average and move the front key forward
-            averager.subtract_from_rolling_total($value_lambda(&table[*next_key.borrow()]));
+            averager.subtract_from_rolling_total($value_lambda(next_key.borrow()));
             averager.decrement_rolling_count();
             averager.set_front_key(*table.next(*next_key.borrow()));
         };
@@ -180,7 +180,7 @@ public(package) macro fun average<$K: copy + drop + store, $V: store>(
                 break
             };
             // Add the next entry's value to the rolling total
-            averager.add_to_rolling_total($value_lambda(&table[*next_key.borrow()]));
+            averager.add_to_rolling_total($value_lambda(next_key.borrow()));
             averager.increment_rolling_count();
             averager.set_back_key(*next_key);
         };
