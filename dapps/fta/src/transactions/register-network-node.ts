@@ -1,29 +1,22 @@
 import { getEveWorldPackageId } from "@evefrontier/dapp-kit";
 import { DAppKit, ClientWithCoreApi } from "@mysten/dapp-kit-react";
 import { Transaction } from "@mysten/sui/transactions";
-import { fetchAssemblyInfo, } from "../queries";
+import { FTA_OBJECT_ID, FTA_PUBLISHED_AT } from "../../libs/auto-constants";
 
-export async function registerNetworkNode(dAppKit: DAppKit<[], ClientWithCoreApi>, ftaPackageId: string, networkNodeId: string, characterObjectId: string, fee: bigint, fee_recipient_address: string) {
+export async function registerNetworkNodeTx(dAppKit: DAppKit<[], ClientWithCoreApi>, characterObjectId: string, ownerCapId: string, networkNodeId: string, fee: bigint, fee_recipient_address: string) {
 
-    const info = await fetchAssemblyInfo(networkNodeId);
-    if (info?.assembly) {
-        console.log("Assembly info:", info);
-    } else {
-        console.error("Failed to fetch assembly info");
-        return;
-    }
     const tx = new Transaction();
 
     const [nnOwnerCap, nnOwnerReceipt] = tx.moveCall({
         target: `${getEveWorldPackageId()}::character::borrow_owner_cap`,
         typeArguments: [`${getEveWorldPackageId()}::network_node::NetworkNode`],
-        arguments: [tx.object(characterObjectId), tx.object(info.assembly.id)],
+        arguments: [tx.object(characterObjectId), tx.object(ownerCapId)],
     });
 
     tx.moveCall({
-        target: `${ftaPackageId}::registration::register_network_node`,
+        target: `${FTA_PUBLISHED_AT}::registration::register_network_node`,
         arguments: [
-            tx.object(ftaPackageId),
+            tx.object(FTA_OBJECT_ID),
             tx.object(characterObjectId),
             tx.object(networkNodeId),
             nnOwnerCap,

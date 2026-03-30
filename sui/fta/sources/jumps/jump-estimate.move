@@ -46,7 +46,7 @@ public struct JumpEstimate has copy, drop, store {
 }
 
 /// Gets a fee estimate for a jump from a given gate
-public fun new(
+public(package) fun new(
     gate_registry: &GateRegistry,
     network_node_registry: &NetworkNodeRegistry,
     blacklist: &Blacklist,

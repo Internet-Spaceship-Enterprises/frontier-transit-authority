@@ -18,6 +18,7 @@ public fun update_gate_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     let gate_record = fta.gate_registry_mut().get_mut(gate);
     assert!(
         management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
@@ -32,6 +33,7 @@ public fun update_gate_fee_recipient(
     gate: &Gate,
     recipient: address,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     let gate_record = fta.gate_registry_mut().get_mut(gate);
     assert!(
         management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
@@ -49,6 +51,7 @@ public fun update_network_node_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     let network_node_record = fta.network_node_registry_mut().get_mut(network_node);
     assert!(
         management_cap.is_authorized(
@@ -67,6 +70,7 @@ public fun update_network_node_fee_recipient(
     network_node: &NetworkNode,
     recipient: address,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     let network_node_record = fta.network_node_registry_mut().get_mut(network_node);
     assert!(
         management_cap.is_authorized(

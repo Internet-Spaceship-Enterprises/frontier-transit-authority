@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./main.css";
+import "@radix-ui/themes/styles.css";
+// import "./main.css";
 
 import { QueryClient } from "@tanstack/react-query";
 import App from "./App.tsx";

@@ -7,7 +7,8 @@
         "set-owner-character": "tsx sui/fta/ts-scripts/set-owner-character.ts",
         "transfer-gates": "tsx sui/fta/ts-scripts/transfer-gates.ts",
         "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts",
-        "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts"
+        "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts",
+        "publish": "tsx sui/fta/ts-scripts/publish.ts"
     },
     "dependencies": {
         "@evefrontier/dapp-kit": "^0.1.7",

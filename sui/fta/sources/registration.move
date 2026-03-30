@@ -171,6 +171,7 @@ public fun transfer_gate_pair_same_network_node(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     transfer_gate_pair_validation(gate_1, gate_2);
 
     // This function can only be used if both gates share the same network node
@@ -262,6 +263,7 @@ public fun transfer_gate_pair(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     transfer_gate_pair_validation(gate_1, gate_2);
 
     transfer_gate(
@@ -357,6 +359,7 @@ public fun register_network_node(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     // If it's already registered, bail out
     if (fta.network_node_registry().registered(network_node)) {
         return
@@ -404,6 +407,7 @@ public fun return_gate_to_owner(
     owner_cap_ticket: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     let record = fta.gate_registry().get(gate);
     let owner_addr = record.management_cap_owner_address();
     let owner_cap = access::borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap_ticket, ctx);

@@ -10,6 +10,7 @@ public fun transfer_developer_balance(
     recipient: address,
     value: u64,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     let transfer_balance = fta.developer_balance().split(value);
     transfer_balance.send_funds(recipient);
 }

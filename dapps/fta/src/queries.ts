@@ -4,8 +4,6 @@ import {
   getObjectByAddress, // Object with BCS data
   getObjectWithJson, // Object with JSON contents
   getObjectWithDynamicFields, // Object + dynamic fields
-  getWalletCharacters,
-  parseCharacterFromJson,
 
   // Assembly + Owner (most useful for EVE)
   getAssemblyWithOwner, // Assembly + character info in one call
@@ -18,11 +16,9 @@ import {
   // Type-based queries
   getObjectsByType, // All objects of a type (paginated)
   getSingletonObjectByType, // First object of a type
-  getEveWorldPackageId,
+
   // Transformation functions
   transformToAssembly,
-  GetOwnedObjectsByPackageResponse,
-  GET_OWNED_OBJECTS_BY_PACKAGE,
 } from "@evefrontier/dapp-kit";
 
 /**
@@ -33,7 +29,7 @@ import {
  */
 async function fetchAssemblyInfo(assemblyId: string) {
   // 1. Fetch raw data from GraphQL
-  const { moveObject, assemblyOwner } = await getAssemblyWithOwner(assemblyId);
+  const { moveObject, character } = await getAssemblyWithOwner(assemblyId);
 
   if (!moveObject) {
     console.error("Assembly not found");
@@ -43,15 +39,15 @@ async function fetchAssemblyInfo(assemblyId: string) {
   // 2. Access raw JSON data directly
   const rawJson = moveObject.contents.json;
   console.log("Raw assembly data:", rawJson);
-  console.log("Assembly owner:", assemblyOwner);
+  console.log("Character owner:", character);
 
   // 3. Or transform to typed Assembly object
   const assembly = await transformToAssembly(assemblyId, moveObject, {
-    character: assemblyOwner,
+    character,
   });
   console.log("Transformed assembly:", assembly);
 
-  return { assembly, assemblyOwner };
+  return { assembly, character };
 }
 
 /** STEP 5 — getObjectWithJson() for object by ID with JSON. */
@@ -82,35 +78,4 @@ async function fetchUserAssemblies(
   return objectAddresses;
 }
 
-async function fetchOwnedObjectsByPackage(
-  owner: string,
-) {
-  const result = await getOwnedObjectsByPackage(owner, getEveWorldPackageId());
-
-  // const objectAddresses = result.data?.address?.objects?.nodes.map(
-  //   (node) => node.address,
-  // );
-
-  console.log("Owned objects by package:", result.data);
-  return null;
-}
-
-async function fetchWalletCharacters(
-  owner: string,
-) {
-
-  const response = await getWalletCharacters(owner);
-
-  const data = response.data;
-  if (!data) {
-    console.warn("[Dapp] No data returned from getWalletCharacters");
-    return;
-  }
-  const json =
-    data?.address?.objects?.nodes?.[0]?.contents?.extract?.asAddress
-      ?.asObject?.asMoveObject?.contents?.json;
-  const characterInfo = parseCharacterFromJson(json);
-  console.log("Wallet characters:", data);
-  return characterInfo;
-}
-export { fetchAssemblyInfo, fetchObjectData, fetchUserAssemblies, fetchOwnedObjectsByPackage, fetchWalletCharacters };
+export { fetchAssemblyInfo, fetchObjectData, fetchUserAssemblies };

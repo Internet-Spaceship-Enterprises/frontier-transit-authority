@@ -1,4 +1,5 @@
 import { Box, Container, Flex, Text } from "@radix-ui/themes";
+import { AssemblyInfo } from "./AssemblyInfo";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 
 export function WalletStatus() {
@@ -6,6 +7,7 @@ export function WalletStatus() {
   const account = useCurrentAccount();
 
   /** STEP 7 — useDAppKit() (@mysten/dapp-kit-react) → signAndExecuteTransaction, signTransaction, signPersonalMessage. */
+  const _dAppKit = useDAppKit();
 
   return (
     <Container my="2">
@@ -20,6 +22,8 @@ export function WalletStatus() {
       )}
 
       <div className="divider" />
+
+      <AssemblyInfo />
     </Container>
   );
 }

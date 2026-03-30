@@ -34,7 +34,7 @@ public(package) fun registered_by_id(registry: &NetworkNodeRegistry, node_id: ID
     registry.table.contains(node_id)
 }
 
-public fun registered_by_gate(registry: &NetworkNodeRegistry, gate: &Gate): bool {
+public(package) fun registered_by_gate(registry: &NetworkNodeRegistry, gate: &Gate): bool {
     let energy_source_id_opt = gate.energy_source_id();
     assert!(energy_source_id_opt.is_some(), EGateHasNoNetworkNode);
     registry.registered_by_id(*energy_source_id_opt.borrow())

@@ -104,7 +104,7 @@ public(package) fun managed_gate_ids(registry: &GateRegistry): vector<ID> {
 }
 
 // Transfers a management cap for a gate to a new owner and updates the gate record to reflect the new owner
-public fun transfer_management_cap(
+public(package) fun transfer_management_cap(
     registry: &mut GateRegistry,
     gate: &Gate,
     cap: ManagementCap<Gate>,

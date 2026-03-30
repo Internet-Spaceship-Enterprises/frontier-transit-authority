@@ -29,9 +29,12 @@ const ELinkedGateNotInNetwork: vector<u8> =
     b"The gate linked to this gate is not part of the Frontier Transit Authority";
 #[error(code = 3)]
 const ENoLinkedGate: vector<u8> = b"You cannot perform an operation on a gate that is not linked";
-#[error(code = 5)]
+#[error(code = 4)]
 const EGateNetworkNodeNotRegistered: vector<u8> =
     b"The network node for this gate is not registered with the Frontier Transit Authority";
+#[error(code = 5)]
+const EUpgradeCapNotExchanged: vector<u8> =
+    b"The upgrade cap has not been exchanged for a custom one, making this package insecure to use";
 
 /// The OTW for the module.
 public struct FTA has drop {}
@@ -40,6 +43,7 @@ public struct FrontierTransitAuthority has key {
     // TODO: swap fields to dynamic fields for upgradability
     id: UID,
     deployer_addr: address,
+    upgrade_cap_exchanged: bool,
     upgrade_manager: UpgradeManager,
     gate_registry: GateRegistry,
     jump_history: JumpHistory,
@@ -63,6 +67,7 @@ fun init(otw: FTA, ctx: &mut TxContext) {
     let fta = FrontierTransitAuthority {
         id: object::new(ctx),
         deployer_addr: ctx.sender(),
+        upgrade_cap_exchanged: false,
         upgrade_manager: upgrades::new_upgrade_manager(),
         gate_registry: gate_registry::new(ctx),
         network_node_registry: network_node_registry::new(ctx),
@@ -73,22 +78,19 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         developer_balance: balance::zero(),
     };
 
-    // Send the FTA to the publisher address so they can use it
-    // in the publish transaction to create the custom upgrade capability.
-    transfer::transfer(fta, ctx.sender());
+    // Share the FTA with the world!
+    transfer::share_object(fta);
 }
 
 /// Exchange the default UpgradeCap for a custom one with much stricter permissions.
-#[allow(lint(share_owned))]
 public fun exchange_upgrade_cap(
-    fta: FrontierTransitAuthority,
+    fta: &mut FrontierTransitAuthority,
     original_upgrade_cap: package::UpgradeCap,
     ctx: &mut TxContext,
 ): UpgradeCap {
-    // Only once the upgrade cap is exchanged should the FTA be shared with the world,
-    // to prevent any funny business by the developers.
-    transfer::share_object(fta);
-    // Exchange the upgrade cap and return it
+    // Mark that the upgrade cap has been exchanged, so now upgrades are restricted
+    // to group consensus for security.
+    fta.upgrade_cap_exchanged = true;
     upgrades::new_upgrade_cap(original_upgrade_cap, ctx)
 }
 
@@ -167,6 +169,10 @@ public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &G
     );
 }
 
+public(package) fun assert_upgrade_cap_exchanged(fta: &FrontierTransitAuthority) {
+    assert!(fta.upgrade_cap_exchanged, EUpgradeCapNotExchanged);
+}
+
 //=================================
 // Blacklist operations
 //=================================
@@ -181,6 +187,7 @@ public fun process_killmail(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     fta
         .killmail_registry
         .process_killmail(
@@ -204,6 +211,7 @@ public fun process_killmail(
 
 /// Asserts that a gate is owned by the FTA. Use primarily for testing.
 public fun assert_gate_managed(fta: &mut FrontierTransitAuthority, gate: &Gate) {
+    fta.assert_upgrade_cap_exchanged();
     fta.gate_registry.registered(gate);
 }
 
@@ -218,12 +226,17 @@ public fun network_node_update(
     fta: &mut FrontierTransitAuthority,
     network_nodes: &vector<NetworkNode>,
     clock: &Clock,
-) { let len = network_nodes.length(); let mut i = 0; while (i < len) {
+) {
+    fta.assert_upgrade_cap_exchanged();
+    let len = network_nodes.length();
+    let mut i = 0;
+    while (i < len) {
         let network_node = vector::borrow(network_nodes, i); // borrow element by index
         let record = fta.network_node_registry.get_by_id_mut(network_node.id());
         record.online_check(network_node, clock);
         i = i + 1;
-    } }
+    }
+}
 
 //=================================
 // Jump operations

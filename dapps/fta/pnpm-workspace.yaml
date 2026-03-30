@@ -2,3 +2,5 @@ onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
 
+overrides:
+  '@eveworld/ui-components': link:../../../dapps/packages/libs/ui-components
