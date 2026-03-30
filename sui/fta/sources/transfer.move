@@ -312,10 +312,8 @@ fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut Tx
 }
 
 /// Transfers a gate back to its original owner
-/// TODO: make this a private func and remove the DeveloperCap requirement
-public fun return_gate_to_owner(
+public(package) fun return_gate_to_owner(
     fta: &mut FrontierTransitAuthority,
-    _: &DeveloperCap,
     character: &mut Character,
     gate: &Gate,
     cap_ticket: Receiving<OwnerCap<Gate>>,
