@@ -1,0 +1,23 @@
+{
+    "name": "frontier-gate-network",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "The Frontier Gate Network",
+    "scripts": {
+        "transfer-gate": "tsx ts-scripts/transfer-gate.ts"
+    },
+    "dependencies": {
+        "@mysten/bcs": "^2.0.2",
+        "@mysten/prettier-plugin-move": "^0.3.3",
+        "@mysten/sui": "^2.0.0",
+        "@noble/hashes": "^1.8.0",
+        "dotenv": "^17.2.3",
+        "prettier": "^3.7.4"
+    },
+    "author": "Internet Spaceship Enterprises",
+    "devDependencies": {
+        "@types/node": "^24.10.4",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    }
+}
