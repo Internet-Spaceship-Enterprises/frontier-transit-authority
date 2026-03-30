@@ -12,7 +12,6 @@ import {
 import { deriveObjectId } from "../../../ts-scripts/utils/derive-object-id";
 import { getGateOwnerCapId, getNetworkNodeOwnerCapId, getEnergySourceId, gateNetworkNodeRegistered } from "./utils";
 import { GAME_CHARACTER_ID, GATE_ITEM_ID_1, GATE_ITEM_ID_2 } from "../../../ts-scripts/utils/constants";
-import { register } from "module";
 
 async function registerNetworkNode(ctx: ReturnType<typeof initializeContext>, tx: Transaction, characterObjectId: string, networkNodeId: string): Promise<Transaction> {
     const { client, keypair, config, address } = ctx;
@@ -98,7 +97,7 @@ async function prepareTransferGate(
 
     if (gate1NetworkNodeId == gate2NetworkNodeId) {
         tx.moveCall({
-            target: `${FTA_PACKAGE_ID}::fta::transfer_gate_pair_same_network_node`,
+            target: `${FTA_PACKAGE_ID}::fta::register_gate_pair_same_network_node`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -124,7 +123,7 @@ async function prepareTransferGate(
         tx = await registerNetworkNode(ctx, tx, characterObjectId, gate2NetworkNodeId);
 
         tx.moveCall({
-            target: `${FTA_PACKAGE_ID}::fta::transfer_gate_pair`,
+            target: `${FTA_PACKAGE_ID}::fta::register_gate_pair`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),

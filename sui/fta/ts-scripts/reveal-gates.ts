@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { Transaction } from "@mysten/sui/transactions";
-import { FTA_PACKAGE_ID, FTA_OBJECT_ID, FTA_DEV_CAP_ID } from "./config";
 import { MODULES } from "../../../ts-scripts/utils/config";
 import {
     getEnvConfig,

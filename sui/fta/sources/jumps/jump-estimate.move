@@ -18,7 +18,6 @@ const EGatesNotLinked: vector<u8> = b"You cannot get a jump permit for gates tha
 const FEE_PRECISION_FACTOR: u64 = 1000;
 
 public struct JumpEstimate has copy, drop, store {
-    id: ID,
     prepared_at: u64,
     character_id: ID,
     source_gate_id: ID,
@@ -55,7 +54,6 @@ public(package) fun new(
     destination_gate: &Gate,
     validity_duration: u64,
     clock: &Clock,
-    ctx: &mut TxContext,
 ): JumpEstimate {
     // Ensure the gates are actually linked with each other
     assert!(
@@ -102,7 +100,6 @@ public(package) fun new(
     let developer_fee = scaled_total_base_fee * constants::developer_fee() / 100;
 
     JumpEstimate {
-        id: ctx.fresh_object_address().to_id(),
         prepared_at: clock.timestamp_ms(),
         character_id: character_id,
         source_gate_id: object::id(source_gate),
@@ -118,10 +115,6 @@ public(package) fun new(
         validity_duration: validity_duration_adjusted,
         precision_factor: FEE_PRECISION_FACTOR,
     }
-}
-
-public(package) fun id(estimate: &JumpEstimate): ID {
-    estimate.id
 }
 
 public(package) fun character_id(estimate: &JumpEstimate): ID {

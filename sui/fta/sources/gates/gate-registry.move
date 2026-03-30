@@ -358,9 +358,9 @@ public(package) fun update_gate_metadata(
     let location = location_opt.borrow();
     let mut coords = b"(".to_string();
     coords.append(location.x());
-    coords.append(b",".to_string());
+    coords.append(b", ".to_string());
     coords.append(location.y());
-    coords.append(b",".to_string());
+    coords.append(b", ".to_string());
     coords.append(location.z());
     coords.append(b")".to_string());
 
@@ -382,8 +382,10 @@ public(package) fun update_gate_metadata(
 
     gate.update_metadata_name(gate_owner_cap, name);
     gate.update_metadata_description(gate_owner_cap, description);
-    // TODO: update with the real URL
-    gate.update_metadata_url(gate_owner_cap, "http://localhost:5173");
+
+    let mut url = b"http://localhost:5173?objectId=0x".to_string(); // TODO: update with the real URL
+    url.append(object::id(gate).to_address().to_string());
+    gate.update_metadata_url(gate_owner_cap, url);
 }
 
 /// Onlines or Offlines an FTA gate if it's not already online

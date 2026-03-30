@@ -512,12 +512,11 @@ public fun network_node_update(
 /// Prepares an estimate for a jump between two gates, which can be used to inform the user of the cost of the jump before they commit to purchasing the permit
 public fun jump_estimate(
     fta: &mut FrontierTransitAuthority,
-    character_id: ID,
+    character: &Character,
     source_gate: &Gate,
     destination_gate: &Gate,
     validity_duration: u64,
     clock: &Clock,
-    ctx: &mut TxContext,
 ): JumpEstimate {
     fta.assert_upgrade_cap_exchanged();
     // Ensure both gates are valid and linked
@@ -527,19 +526,18 @@ public fun jump_estimate(
         &fta.gate_registry,
         &fta.network_node_registry,
         &fta.blacklist,
-        character_id,
+        object::id(character),
         source_gate,
         destination_gate,
         validity_duration,
         clock,
-        ctx,
     )
 }
 
 /// Prepares a quote for a jump between two gates, which is an object that the user can then use to purchase a jump permit.
 public fun jump_quote(
     fta: &mut FrontierTransitAuthority,
-    character_id: ID,
+    character: &Character,
     source_gate: &Gate,
     destination_gate: &Gate,
     validity_duration: u64,
@@ -555,21 +553,21 @@ public fun jump_quote(
             &fta.gate_registry,
             &fta.network_node_registry,
             &fta.blacklist,
-            character_id,
+            object::id(character),
             source_gate,
             destination_gate,
             validity_duration,
             clock,
-            ctx,
         ),
         ctx,
     )
 }
 
+/// Issues a jump permit for a jump between two gates, given a quote that was prepared beforehand
 public fun jump_permit(
     fta: &mut FrontierTransitAuthority,
-    character: &mut Character,
     quote: JumpQuote,
+    character: &Character,
     source_gate: &mut Gate,
     source_gate_owner_cap: Receiving<OwnerCap<Gate>>,
     source_network_node: &mut NetworkNode,
@@ -624,40 +622,52 @@ public fun jump_permit(
     return_owner_cap(fta, dest_cap, dest_receipt, ctx);
 }
 
-/// Adds a jump to the jump history
-public(package) fun jump_history_add(
-    fta: &mut FrontierTransitAuthority,
-    quote: &JumpQuote,
-    character_id: ID,
-    permit_id: ID,
-    ctx: &mut TxContext,
-) {
-    fta.jump_history.add(&mut fta.blacklist, *quote.estimate(), character_id, permit_id, ctx);
-}
-
 //=================================
 // Upgrade operations
 //=================================
 
 /// Propose a new package upgrade.
 /// Only the developers (holders of the modified UpgradeCap) can call this function.
-public(package) fun propose(
+public fun propose(
     fta: &mut FrontierTransitAuthority,
     _: &UpgradeCap,
     digest: vector<u8>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     fta.upgrade_manager.propose(digest, clock, ctx);
 }
 
 /// Clears the current upgrade proposal
-public(package) fun clear_proposal(fta: &mut FrontierTransitAuthority, _: &UpgradeCap) {
+public fun clear_proposal(fta: &mut FrontierTransitAuthority, _: &UpgradeCap) {
+    fta.assert_upgrade_cap_exchanged();
     fta.upgrade_manager.clear_proposal();
 }
 
+/// Clears a failed proposal after voting has concluded and the result has been determined to be a failure
+public fun clear_failed_proposal(
+    fta: &mut FrontierTransitAuthority,
+    _: &UpgradeCap,
+    clock: &Clock,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    fta.upgrade_manager.clear_failed_proposal(clock);
+}
+
+/// Checks the voting on a proposal to authorize the upgrade if it has passed
+public fun authorize_upgrade(
+    fta: &mut FrontierTransitAuthority,
+    cap: &mut UpgradeCap,
+    digest: vector<u8>,
+    clock: &Clock,
+): package::UpgradeTicket {
+    fta.assert_upgrade_cap_exchanged();
+    fta.upgrade_manager.authorize_upgrade(cap, digest, clock)
+}
+
 /// Vote on a proposal
-public(package) fun vote(
+public fun vote(
     fta: &mut FrontierTransitAuthority,
     character: &Character,
     in_favour: bool,
@@ -665,6 +675,7 @@ public(package) fun vote(
     clock: &Clock,
     ctx: &TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     fta
         .upgrade_manager
         .vote(
@@ -674,23 +685,4 @@ public(package) fun vote(
             clock,
             ctx,
         );
-}
-
-/// Clears a failed proposal after voting has concluded and the result has been determined to be a failure
-public(package) fun clear_failed_proposal(
-    fta: &mut FrontierTransitAuthority,
-    _: &UpgradeCap,
-    clock: &Clock,
-) {
-    fta.upgrade_manager.clear_failed_proposal(clock);
-}
-
-/// Checks the voting on a proposal to authorize the upgrade if it has passed
-public(package) fun authorize_upgrade(
-    fta: &mut FrontierTransitAuthority,
-    cap: &mut UpgradeCap,
-    digest: vector<u8>,
-    clock: &Clock,
-): package::UpgradeTicket {
-    fta.upgrade_manager.authorize_upgrade(cap, digest, clock)
 }

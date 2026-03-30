@@ -2,6 +2,7 @@ module fta::jump_history;
 
 use fta::blacklist::Blacklist;
 use fta::jump_estimate::JumpEstimate;
+use fta::jump_quote::JumpQuote;
 use fta::multi_rolling_averager::{Self, MultiRollingAverager};
 use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
@@ -48,17 +49,17 @@ public(package) fun new(ctx: &mut TxContext): JumpHistory {
 public(package) fun add(
     history: &mut JumpHistory,
     blacklist: &mut Blacklist,
-    estimate: JumpEstimate,
+    quote: &JumpQuote,
     character_id: ID,
     permit_id: ID,
     ctx: &mut TxContext,
 ) {
     // Pay down the character's blacklist penalty based on the fee they just paid for this jump
-    blacklist.pay_down_penalty(character_id, estimate.total_unscaled_base_fee());
+    blacklist.pay_down_penalty(character_id, quote.estimate().total_unscaled_base_fee());
 
     // Create the entry
     let entry = JumpHistoryEntry {
-        estimate: estimate,
+        estimate: quote.estimate(),
         character_id: character_id,
         permit_id: permit_id,
     };
@@ -67,8 +68,8 @@ public(package) fun add(
         history.entries_by_character.push_back(character_id, new_character_jump_history(ctx));
     };
     // Add the entry to the character's history and the overall history
-    history.entries_by_character[character_id].entries.push_back(entry.estimate.id(), copy entry);
-    history.entries.push_back(entry.estimate.id(), entry);
+    history.entries_by_character[character_id].entries.push_back(*quote.id(), copy entry);
+    history.entries.push_back(*quote.id(), entry);
 }
 
 public(package) fun fee_average(

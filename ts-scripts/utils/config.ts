@@ -27,17 +27,18 @@ export type WorldConfig = {
 
 export type HydratedWorldConfig = WorldConfig;
 
-export type Network = "localnet" | "testnet" | "devnet" | "mainnet";
+export type Network = "localnet" | "testnet" | "devnet" | "mainnet" | "testnet_utopia";
 
 export const DEFAULT_RPC_URLS: Record<Network, string> = {
     localnet: "http://127.0.0.1:9000",
     testnet: "https://fullnode.testnet.sui.io:443",
     devnet: "https://fullnode.devnet.sui.io:443",
     mainnet: "https://fullnode.mainnet.sui.io:443",
+    testnet_utopia: "https://fullnode.testnet.sui.io:443",
 };
 
 export function getConfig(network: Network = "localnet"): WorldConfig {
-    const url = process.env.SUI_RPC_URL || DEFAULT_RPC_URLS[network];
+    const url = DEFAULT_RPC_URLS[network];
     const packageId = process.env.WORLD_PACKAGE_ID || "";
 
     return {

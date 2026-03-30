@@ -29,7 +29,7 @@ async function returnGateToOwner(
 
     console.log(`Returning gate: ${gateId}`);
     tx.moveCall({
-        target: `${FTA_PACKAGE_ID}::fta::return_gate_to_owner`,
+        target: `${FTA_PACKAGE_ID}::fta::deregister_gate`,
         arguments: [
             tx.object(FTA_OBJECT_ID),
             tx.object(FTA_NEW_UPGRADE_CAP_ID),

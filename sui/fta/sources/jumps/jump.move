@@ -34,6 +34,8 @@ const EWrongNetworkNode: vector<u8> = b"The wrong network node was provided";
 const ENetworkNodeOffline: vector<u8> = b"The network node is offline";
 #[error(code = 7)]
 const EQuoteExpired: vector<u8> = b"The jump quote has expired";
+#[error(code = 8)]
+const EBadMath: vector<u8> = b"Math error in jump quote calculation (internal error)";
 
 // Configures the gate to use our jump extension
 public(package) fun init_jump_extension(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>) {
@@ -64,6 +66,9 @@ public(package) fun issue_jump_permit(
 ) {
     // NOTE: we intentionally do not check if the sender address owns the character
     // because we want to enable tribes to pay for jumps on behalf of their members
+
+    // Ensure the payment amount is correct
+    assert!(quote.estimate().total_fee() == payment.value(), EWrongPaymentAmount);
 
     // Ensure the provided gates match the invoice gates
     assert!(quote.estimate().source_gate_id() == object::id(source_gate), EWrongSourceGate);
@@ -98,6 +103,7 @@ public(package) fun issue_jump_permit(
     assert!(destination_network_node.is_network_node_online(), ENetworkNodeOffline);
 
     // Power up the gates!
+    // TODO: re-enable once dual network nodes are available
     gate_registry::change_gate_online(
         gate_registry,
         network_node_registry,
@@ -154,7 +160,7 @@ public(package) fun issue_jump_permit(
     balance::join(developer_balance, developer_fee);
 
     // Sanity check that the remaining amount is correct
-    assert!(payment.value() == quote.estimate().total_bounty_fee(), EWrongPaymentAmount);
+    assert!(payment.value() == quote.estimate().total_bounty_fee(), EBadMath);
     // Transfer the bounty fee
     balance::join(bounty_balance, payment.into_balance());
 
@@ -167,7 +173,7 @@ public(package) fun issue_jump_permit(
     );
 
     // Record the issuance of the permit
-    jump_history.add(blacklist, *quote.estimate(), object::id(character), permit_id, ctx);
+    jump_history.add(blacklist, &quote, object::id(character), permit_id, ctx);
 
     // Destroy the quote to prevent reuse and reclaim gas fees
     quote.destroy();

@@ -10,7 +10,11 @@
         "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts",
         "datetime": "tsx sui/fta/ts-scripts/datetime.ts",
         "publish": "tsx sui/fta/ts-scripts/publish.ts",
-        "exchange-upgrade-cap": "tsx sui/fta/ts-scripts/exchange-upgrade-cap.ts"
+        "exchange-upgrade-cap": "tsx sui/fta/ts-scripts/exchange-upgrade-cap.ts",
+        "jump-estimate": "tsx sui/fta/ts-scripts/jump-estimate.ts",
+        "jump-quote": "tsx sui/fta/ts-scripts/jump-quote.ts",
+        "jump-permit": "tsx sui/fta/ts-scripts/jump-permit.ts",
+        "transfer-eve": "tsx sui/fta/ts-scripts/transfer-eve.ts"
     },
     "dependencies": {
         "@evefrontier/dapp-kit": "^0.1.7",

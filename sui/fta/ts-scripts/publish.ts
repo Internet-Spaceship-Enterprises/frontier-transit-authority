@@ -6,8 +6,9 @@ import {
 	requireEnv,
 } from "../../../ts-scripts/utils/helper";
 import { createClient } from "../../../ts-scripts/utils/client";
+import { writeFileSync } from 'node:fs';
+import { delay, getDelayMs } from "../../../ts-scripts/utils/delay";
 import { execSync } from 'child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const tmpclient = createClient("testnet");
 type GetTxBlockResult = Awaited<ReturnType<typeof tmpclient.getTransactionBlock>>;
@@ -100,9 +101,12 @@ async function publish(
 	const publishExec = await client.signAndExecuteTransaction({
 		signer: keypair,
 		transaction: publishTx,
+		options: { showObjectChanges: true, showEffects: true, showEvents: true },
 	});
 
-	// const publishDigest = "4ZsbyMmSyS4jfaqs1bRG7Hop58r9GncYNvGa64SNHVJY";
+	await delay(getDelayMs());
+
+	//const publishDigest = "21sYKCJ4wsZVG81BXRkTbdnorcbmJGWUmtcMUxN938Xv";
 	const publishDigest = publishExec.digest;
 	console.log("Published digest: ", publishDigest);
 
@@ -134,6 +138,7 @@ async function publish(
 	console.log('  upgradeCapId:', upgradeCapId);
 	console.log('  ftaId:       ', frontierTransitAuthorityId);
 
+
 	const transferTx = new Transaction();
 
 	transferTx.moveCall({
@@ -147,12 +152,15 @@ async function publish(
 	const transferExec = await client.signAndExecuteTransaction({
 		signer: keypair,
 		transaction: transferTx,
+		options: { showObjectChanges: true, showEffects: true, showEvents: true },
 	});
+	console.log("Transfer exec digest: ", transferExec.digest);
+	console.log("Transfer exec changes:\n", transferExec.objectChanges);
 
 	const createdCapChange = transferExec.objectChanges?.findLast(change => {
 		return change.type === 'created' && change.objectType.endsWith('::upgrade_cap::UpgradeCap')
 	});
-	if (!createdCapChange) {
+	if (!createdCapChange || createdCapChange.type !== 'created') {
 		throw new Error('No UpgradeCap created in transaction');
 	}
 	const newCapId = createdCapChange!.objectId;

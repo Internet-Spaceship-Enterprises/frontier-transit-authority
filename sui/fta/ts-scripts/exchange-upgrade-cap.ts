@@ -34,7 +34,7 @@ async function exchangeUpgradeCap(
     const createdCapChange = result.objectChanges?.findLast(change => {
         return change.type === 'created' && change.objectType.endsWith('::upgrade_cap::UpgradeCap')
     });
-    if (!createdCapChange) {
+    if (!createdCapChange || createdCapChange.type !== 'created') {
         throw new Error('No UpgradeCap created in transaction');
     }
     const newCapId = createdCapChange!.objectId;
