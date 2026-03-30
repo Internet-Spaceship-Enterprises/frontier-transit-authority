@@ -1,6 +1,7 @@
 module fta::gate_registry;
 
 use fta::gate_record::GateRecord;
+use fta::management_cap::ManagementCap;
 use sui::linked_table::{Self, LinkedTable};
 use world::gate::Gate;
 
@@ -10,6 +11,8 @@ const EGateAlreadyRegistered: vector<u8> =
 #[error(code = 2)]
 const EGateNotInNetwork: vector<u8> =
     b"This gate is not registered with the Frontier Transit Authority network";
+#[error(code = 3)]
+const EWrongManagementCap: vector<u8> = b"This management cap is not for the specified gate";
 
 public struct GateRegistry has store {
     // Maps gate ID to gate record
@@ -91,4 +94,18 @@ public(package) fun managed_gate_ids(registry: &GateRegistry): vector<ID> {
     };
 
     keys
+}
+
+// Transfers a management cap for a gate to a new owner and updates the gate record to reflect the new owner
+public fun transfer_management_cap(
+    registry: &mut GateRegistry,
+    gate: &Gate,
+    cap: ManagementCap<Gate>,
+    new_owner: address,
+) {
+    // Ensure this is the management cap for the gate
+    assert!(cap.authorized_object_id() == object::id(gate), EWrongManagementCap);
+    let record = registry.get_mut(gate);
+    record.set_management_cap_owner_address(new_owner);
+    cap.transfer(new_owner);
 }

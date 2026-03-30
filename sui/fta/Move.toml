@@ -9,4 +9,4 @@ world = { local = "/frontier/world-contracts/contracts/world" }
 assets = { local = "/frontier/world-contracts/contracts/assets" }
 
 [environments]
-localnet = "2ac87a64"
+localnet = "463701bf"

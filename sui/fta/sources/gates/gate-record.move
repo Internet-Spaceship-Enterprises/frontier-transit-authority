@@ -16,6 +16,8 @@ public struct GateRecord has store {
     fee_recipient: address,
     // Where the key is the update timestamp and the value is the new fee structure
     fee_history: FeeHistory,
+    // Tracks who holds the management cap
+    management_cap_owner_address: address,
 }
 
 /// Creates a new GateRecord
@@ -42,9 +44,10 @@ public(package) fun new(
         gate_id: gate_id,
         fee_recipient: fee_recipient,
         fee_history: fee_history::new(jump_fee, clock, ctx),
+        management_cap_owner_address: transferred_from_character_id.to_address(),
     };
     // Transfer the management cap to the original owner character
-    cap.transfer(transferred_from_character_id.to_address());
+    cap.transfer(record.management_cap_owner_address);
     record
 }
 
@@ -59,6 +62,7 @@ public(package) fun destroy(record: GateRecord) {
         gate_id: _,
         fee_recipient: _,
         fee_history: fee_history,
+        management_cap_owner_address: _,
     } = record;
     fee_history.destroy();
 }
@@ -108,4 +112,15 @@ public(package) fun current_fee(record: &GateRecord, clock: &Clock): u64 {
 
 public(package) fun fee_recipient(record: &GateRecord): address {
     record.fee_recipient
+}
+
+public(package) fun management_cap_owner_address(record: &GateRecord): address {
+    record.management_cap_owner_address
+}
+
+public(package) fun set_management_cap_owner_address(
+    record: &mut GateRecord,
+    owner_address: address,
+) {
+    record.management_cap_owner_address = owner_address;
 }

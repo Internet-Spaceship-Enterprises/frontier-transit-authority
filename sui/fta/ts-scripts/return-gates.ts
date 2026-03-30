@@ -16,13 +16,11 @@ import { GAME_CHARACTER_B_ID, GATE_ITEM_ID_1, GATE_ITEM_ID_2 } from "../../../ts
 
 async function returnGateToOwner(
     ctx: ReturnType<typeof initializeContext>,
-    characterId: number,
     gateItemId: bigint,
 ) {
     const { client, keypair, config, address } = ctx;
     let tx = new Transaction();
 
-    const characterObjectId = deriveObjectId(config.objectRegistry, characterId, config.packageId);
     const gateId = deriveObjectId(config.objectRegistry, gateItemId, config.packageId);
     const gateOwnerCapId = await getGateOwnerCapId(gateId, client, config, address);
     if (!gateOwnerCapId) {
@@ -31,11 +29,10 @@ async function returnGateToOwner(
 
     console.log(`Returning gate: ${gateId}`);
     tx.moveCall({
-        target: `${FTA_PACKAGE_ID}::transfer::return_gate_to_owner`,
+        target: `${FTA_PACKAGE_ID}::registration::return_gate_to_owner`,
         arguments: [
             tx.object(FTA_OBJECT_ID),
             tx.object(FTA_DEV_CAP_ID),
-            tx.object(characterObjectId),
             tx.object(gateId),
             tx.object(gateOwnerCapId),
         ],
@@ -59,9 +56,9 @@ async function main() {
         const playerCtx = initializeContext(env.network, playerKey);
         await hydrateWorldConfig(playerCtx);
 
-        await returnGateToOwner(playerCtx, GAME_CHARACTER_B_ID, GATE_ITEM_ID_1);
+        await returnGateToOwner(playerCtx, GATE_ITEM_ID_1);
         await delay(getDelayMs());
-        await returnGateToOwner(playerCtx, GAME_CHARACTER_B_ID, GATE_ITEM_ID_2);
+        await returnGateToOwner(playerCtx, GATE_ITEM_ID_2);
     } catch (error) {
         handleError(error);
     }

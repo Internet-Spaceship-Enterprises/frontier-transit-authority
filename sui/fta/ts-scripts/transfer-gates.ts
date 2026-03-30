@@ -12,6 +12,44 @@ import {
 import { deriveObjectId } from "../../../ts-scripts/utils/derive-object-id";
 import { getGateOwnerCapId, getNetworkNodeOwnerCapId, getEnergySourceId, gateNetworkNodeRegistered } from "./utils";
 import { GAME_CHARACTER_ID, GATE_ITEM_ID_1, GATE_ITEM_ID_2 } from "../../../ts-scripts/utils/constants";
+import { register } from "module";
+
+async function registerNetworkNode(ctx: ReturnType<typeof initializeContext>, tx: Transaction, characterObjectId: string, networkNodeId: string): Promise<Transaction> {
+    const { client, keypair, config, address } = ctx;
+    const nn1OwnerCapId = await getNetworkNodeOwnerCapId(networkNodeId, client, config, address);
+    if (!nn1OwnerCapId) {
+        throw "Unable to load gate's Network Node Owner Cap ID";
+    }
+    const [nn1OwnerCap, nn1OwnerReceipt] = tx.moveCall({
+        target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
+        typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
+        arguments: [tx.object(characterObjectId), tx.object(nn1OwnerCapId)],
+    });
+
+    tx.moveCall({
+        target: `${FTA_PACKAGE_ID}::registration::register_network_node`,
+        arguments: [
+            tx.object(FTA_OBJECT_ID),
+            tx.object(characterObjectId),
+            tx.object(networkNodeId),
+            nn1OwnerCap,
+            tx.pure.u64(99),
+            tx.pure.address(FTA_OBJECT_ID),
+            tx.object.clock(),
+        ],
+    });
+
+    tx.moveCall({
+        target: `${config.packageId}::${MODULES.CHARACTER}::return_owner_cap`,
+        typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
+        arguments: [
+            tx.object(characterObjectId),
+            nn1OwnerCap,
+            nn1OwnerReceipt,
+        ],
+    });
+    return tx;
+}
 
 async function prepareTransferGate(
     ctx: ReturnType<typeof initializeContext>,
@@ -55,23 +93,12 @@ async function prepareTransferGate(
         throw new Error("Cannot transfer gate 2 without a network node connected");
     }
 
-    // let nn1OwnerCap = null;
-    // let nn1OwnerReceipt = null;
-    // if (! await gateNetworkNodeRegistered(gate1Id, client, address)) {
-    //     const nn1OwnerCapId = await getNetworkNodeOwnerCapId(gate1NetworkNodeId, client, config, address);
-    //     if (!nn1OwnerCapId) {
-    //         throw "Unable to load gate 1's Network Node Owner Cap ID";
-    //     }
-    //     [nn1OwnerCap, nn1OwnerReceipt] = tx.moveCall({
-    //         target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
-    //         typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
-    //         arguments: [tx.object(characterObjectId), tx.object(nn1OwnerCapId)],
-    //     });
-    // }
+    // Register the network node if it is not already registered
+    tx = await registerNetworkNode(ctx, tx, characterObjectId, gate1NetworkNodeId);
 
     if (gate1NetworkNodeId == gate2NetworkNodeId) {
         tx.moveCall({
-            target: `${FTA_PACKAGE_ID}::transfer::transfer_gate_pair_same_network_node`,
+            target: `${FTA_PACKAGE_ID}::registration::transfer_gate_pair_same_network_node`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -88,16 +115,21 @@ async function prepareTransferGate(
                 //     value: nn1OwnerReceipt,
                 // }),
                 tx.pure.u64(99),
+                tx.pure.address(FTA_OBJECT_ID),
                 tx.object(gate2Id),
                 gate2OwnerCap,
                 gate2OwnerReceipt,
                 tx.pure.u64(99),
+                tx.pure.address(FTA_OBJECT_ID),
                 tx.object(config.energyConfig),
                 tx.object(config.locationRegistry),
                 tx.object.clock(),
             ],
         });
     } else {
+
+        // Register the network nodes if they are not already registered
+        tx = await registerNetworkNode(ctx, tx, characterObjectId, gate2NetworkNodeId);
         // let nn2OwnerCap = null;
         // let nn2OwnerReceipt = null;
         // if (! await gateNetworkNodeRegistered(gate2Id, client, address)) {
@@ -113,7 +145,7 @@ async function prepareTransferGate(
         // }
 
         tx.moveCall({
-            target: `${FTA_PACKAGE_ID}::transfer::transfer_gate_pair`,
+            target: `${FTA_PACKAGE_ID}::registration::transfer_gate_pair`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -130,6 +162,7 @@ async function prepareTransferGate(
                 //     value: nn1OwnerReceipt,
                 // }),
                 tx.pure.u64(99),
+                tx.pure.address(FTA_OBJECT_ID),
                 tx.object(gate2Id),
                 gate2OwnerCap,
                 gate2OwnerReceipt,
@@ -143,6 +176,7 @@ async function prepareTransferGate(
                 //     value: nn2OwnerReceipt,
                 // }),
                 tx.pure.u64(99),
+                tx.pure.address(FTA_OBJECT_ID),
                 tx.object(config.energyConfig),
                 tx.object(config.locationRegistry),
                 tx.object.clock(),

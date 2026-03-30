@@ -356,6 +356,10 @@ public fun register_network_node(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    // If it's already registered, bail out
+    if (fta.network_node_registry().registered(network_node)) {
+        return
+    };
     assert!(!fta.network_node_registry().registered(network_node), ENetworkNodeAlreadyRegistered);
     // Ensure the network node owner cap provided is the right one for the network node
     assert!(
@@ -395,13 +399,17 @@ fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut Tx
 public fun return_gate_to_owner(
     fta: &mut FrontierTransitAuthority,
     _: &DeveloperCap,
-    character: &mut Character,
-    gate: &Gate,
-    cap_ticket: Receiving<OwnerCap<Gate>>,
+    gate: &mut Gate,
+    owner_cap_ticket: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
 ) {
-    // Transfer the owner cap back to the character
-    access::transfer_owner_cap(fta, cap_ticket, object::id(character).to_address(), ctx);
+    let owner_cap = access::borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap_ticket, ctx);
+    // Remove the extension from the gate
+    gate.revoke_extension_authorization(&owner_cap);
+
+    let record = fta.gate_registry().get(gate);
+    // Send the OwnerCap to the entity that holds the ManagementCap
+    world::access::transfer_owner_cap(owner_cap, record.management_cap_owner_address());
 
     // Remove the gate from the network
     fta.gate_registry_mut().deregister(gate);

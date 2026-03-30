@@ -84,3 +84,27 @@ public(package) fun borrow_gate_owner_cap(
     assert!(gate.owner_cap_id() == object::id(&owner_cap), EWrongOwnerCap);
     (owner_cap, receipt)
 }
+
+/// Borrows an OwnerCap<Gate> from the FTA for privileged operations, without a return receipt (DANGEROUS)
+public(package) fun borrow_gate_owner_cap_no_receipt(
+    fta: &mut FrontierTransitAuthority,
+    gate: &Gate,
+    cap_ticket: Receiving<OwnerCap<Gate>>,
+    ctx: &TxContext,
+): OwnerCap<Gate> {
+    // Ensure FTA controls the gate
+    assert!(fta.gate_registry().registered(gate), EGateNotInNetwork);
+
+    // Get the owner cap and receipt
+    let (
+        owner_cap,
+        OwnerCapReceipt<Gate> {
+            owner_id: _,
+            owner_cap_id: _,
+        },
+    ) = borrow_owner_cap(fta, cap_ticket, ctx);
+
+    // Ensure the correct OwnerCap was passed in
+    assert!(gate.owner_cap_id() == object::id(&owner_cap), EWrongOwnerCap);
+    owner_cap
+}

@@ -23,8 +23,3 @@ export const FTA_PACKAGE_ID = \"$packageId\";
 export const FTA_OBJECT_ID = \"$ftaId\";
 export const FTA_DEV_CAP_ID = \"$devCapId\";
 " > "$SCRIPT_DIR/ts-scripts/config.ts"
-
-start_dir=$(pwd)
-cd $WORKSPACE_DIR/frontier-gate-network
-pnpm set-owner-character
-cd $start_dir
