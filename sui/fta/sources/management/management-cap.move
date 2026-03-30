@@ -9,12 +9,12 @@ public struct ManagementCap<phantom T> has key {
     // can be transferred back to the original owner in some cases, but since FTA doesn't own
     // the ManagementCap, it we can't delete the cap when the gate gets transferred back.
     // So instead, we render it useless by tying it to a unique ID in the registration process.
-    object_registration_id: address,
+    object_registration_id: ID,
 }
 
 public(package) fun new<T: key>(
     object_id: ID,
-    object_registration_id: address,
+    object_registration_id: ID,
     ctx: &mut TxContext,
 ): ManagementCap<T> {
     let management_cap = ManagementCap<T> {
@@ -38,7 +38,7 @@ public(package) fun id<T>(management_cap: &mut ManagementCap<T>): &mut UID {
 public(package) fun is_authorized<T>(
     management_cap: &ManagementCap<T>,
     object_id: ID,
-    object_registration_id: address,
+    object_registration_id: ID,
 ): bool {
     management_cap.authorized_object_id == object_id && management_cap.object_registration_id == object_registration_id
 }

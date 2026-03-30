@@ -3,6 +3,7 @@ module fta::registration;
 use fta::access;
 use fta::fta::{FrontierTransitAuthority, DeveloperCap};
 use fta::gate_record;
+use fta::jump::JumpAuth;
 use fta::network_node_record;
 use sui::clock::Clock;
 use sui::transfer::Receiving;
@@ -23,9 +24,10 @@ const EGatesNotLinked: vector<u8> = b"The two gates being transferred must be li
 #[error(code = 4)]
 const EWrongNetworkNode: vector<u8> =
     b"The NetworkNode provided is not the correct one for this Gate";
-#[error(code = 5)]
-const ENoNetworkNodeOwnerCapProvided: vector<u8> =
-    b"If the gate is connected to a network node that is not already owned by FTA, then the network node's OwnerCap and Receipt must be provided";
+// Removed because network nodes are currently not transferred
+// #[error(code = 5)]
+// const ENoNetworkNodeOwnerCapProvided: vector<u8> =
+//     b"If the gate is connected to a network node that is not already owned by FTA, then the network node's OwnerCap and Receipt must be provided";
 #[error(code = 6)]
 const EGateHasNoNetworkNode: vector<u8> =
     b"A gate cannot be transferred to FTA if it is not connected to a network node";
@@ -144,7 +146,7 @@ fun transfer_gate(
         ctx,
     );
     // Put the record in the table using a unique hash for the pair
-    fta.add_gate_record(record);
+    fta.gate_table_mut().add(record);
 }
 
 public fun transfer_gate_pair_same_network_node(
@@ -382,7 +384,8 @@ public fun register_network_node(
 fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut TxContext) {
     // TODO: set metadata name using the system/location
     gate.update_metadata_name(gate_owner_cap, b"Frontier Transit Authority".to_string());
-    // TODO: configure the authorization extension
+    // Authorize the JumpAuth extension for FTA to be able to issue jump permits
+    gate.authorize_extension<JumpAuth>(gate_owner_cap);
 }
 
 /// Transfers a gate back to its original owner
@@ -400,9 +403,9 @@ public fun return_gate_to_owner(
     // Transfer it to the original owner
     cap.transfer_owner_cap_with_receipt(
         receipt,
-        fta.get_gate_record(gate).transferred_from_character_id().to_address(),
+        fta.gate_table().get_by_gate(gate).transferred_from_character_id().to_address(),
         ctx,
     );
     // Remove the gate from the network
-    fta.remove_gate_record(gate);
+    fta.gate_table_mut().deregister(gate);
 }

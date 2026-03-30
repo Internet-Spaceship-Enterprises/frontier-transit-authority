@@ -17,8 +17,6 @@ const EGateHasNoNetworkNode: vector<u8> =
 #[error(code = 2)]
 const ENetworkNodeNotInNetwork: vector<u8> =
     b"The network node for this gate is not part of the Frontier Transit Authority";
-#[error(code = 3)]
-const EGatesNotLinked: vector<u8> = b"The provided gates are not linked";
 
 /// Onlines or Offlines an FTA gate if it's not already online
 public(package) fun change_online(
@@ -31,7 +29,7 @@ public(package) fun change_online(
     energy_config: &EnergyConfig,
     ctx: &mut TxContext,
 ) {
-    assert!(fta.gate_registered(gate), EGateNotInNetwork);
+    assert!(fta.gate_table().gate_registered(gate), EGateNotInNetwork);
     assert!(gate.energy_source_id().is_some(), EGateHasNoNetworkNode);
     assert!(
         fta.network_node_table().contains(*gate.energy_source_id().borrow()),

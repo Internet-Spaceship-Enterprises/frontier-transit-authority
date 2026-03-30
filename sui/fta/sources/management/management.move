@@ -1,7 +1,7 @@
 module fta::management;
 
 use fta::fta::FrontierTransitAuthority;
-use fta::management_cap::{Self, ManagementCap};
+use fta::management_cap::ManagementCap;
 use sui::clock::Clock;
 use world::gate::Gate;
 use world::network_node::NetworkNode;
@@ -18,7 +18,7 @@ public fun update_gate_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
-    let gate_record = fta.get_gate_record_mut(gate);
+    let gate_record = fta.gate_table_mut().get_by_gate_mut(gate);
     assert!(
         management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
         EManagementCapWrongResource,
@@ -26,7 +26,21 @@ public fun update_gate_fee(
     gate_record.update_fee(jump_fee, takes_effect_on, clock);
 }
 
-// Updates the fee for a network node
+public fun update_gate_fee_recipient(
+    fta: &mut FrontierTransitAuthority,
+    management_cap: &ManagementCap<Gate>,
+    gate: &Gate,
+    recipient: address,
+) {
+    let gate_record = fta.gate_table_mut().get_by_gate_mut(gate);
+    assert!(
+        management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
+        EManagementCapWrongResource,
+    );
+    gate_record.update_fee_recipient(recipient);
+}
+
+/// Updates the fee for a network node
 public fun update_network_node_fee(
     fta: &mut FrontierTransitAuthority,
     management_cap: &ManagementCap<NetworkNode>,
@@ -46,4 +60,20 @@ public fun update_network_node_fee(
     network_node_record.update_fee(jump_fee, takes_effect_on, clock);
 }
 
-// TODO: destroy managementcap when a gate or network node is removed from the FTA registry.
+/// Updates the recipient for fees paid to jump through a gate connected to this network node
+public fun update_network_node_fee_recipient(
+    fta: &mut FrontierTransitAuthority,
+    management_cap: &ManagementCap<NetworkNode>,
+    network_node: &NetworkNode,
+    recipient: address,
+) {
+    let network_node_record = fta.get_network_node_record_mut(network_node);
+    assert!(
+        management_cap.is_authorized(
+            object::id(network_node),
+            network_node_record.object_registration_id(),
+        ),
+        EManagementCapWrongResource,
+    );
+    network_node_record.update_fee_recipient(recipient);
+}

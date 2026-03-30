@@ -6,7 +6,7 @@ use sui::clock::Clock;
 use world::network_node::NetworkNode;
 
 public struct NetworkNodeRecord has store {
-    object_registration_id: address,
+    object_registration_id: ID,
     management_cap_id: ID,
     transferred_on: u64,
     transferred_from_character_id: ID,
@@ -29,7 +29,7 @@ public(package) fun new(
     ctx: &mut TxContext,
 ): NetworkNodeRecord {
     // Create a management cap for this network node
-    let object_registration_id = ctx.fresh_object_address();
+    let object_registration_id = ctx.fresh_object_address().to_id();
     let cap = management_cap::new<NetworkNode>(network_node_id, object_registration_id, ctx);
     // Prepare the record
     let record = NetworkNodeRecord {
@@ -72,7 +72,12 @@ public(package) fun update_fee(
     record.fee_history.update_fee(jump_fee, takes_effect_on, clock);
 }
 
-public(package) fun object_registration_id(record: &NetworkNodeRecord): address {
+/// Updates the recipient for fees paid to jump through a gate connected to this network node
+public(package) fun update_fee_recipient(record: &mut NetworkNodeRecord, recipient: address) {
+    record.fee_recipient = recipient;
+}
+
+public(package) fun object_registration_id(record: &NetworkNodeRecord): ID {
     record.object_registration_id
 }
 

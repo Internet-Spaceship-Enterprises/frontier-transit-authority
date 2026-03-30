@@ -6,7 +6,7 @@ use sui::clock::Clock;
 use world::gate::Gate;
 
 public struct GateRecord has store {
-    object_registration_id: address,
+    object_registration_id: ID,
     management_cap_id: ID,
     transferred_on: u64,
     transferred_from_character_id: ID,
@@ -30,7 +30,7 @@ public(package) fun new(
     ctx: &mut TxContext,
 ): GateRecord {
     // Create a management cap for this network node
-    let object_registration_id = ctx.fresh_object_address();
+    let object_registration_id = ctx.fresh_object_address().to_id();
     let cap = management_cap::new<Gate>(gate_id, object_registration_id, ctx);
     // Prepare the record
     let record = GateRecord {
@@ -73,7 +73,12 @@ public(package) fun update_fee(
     record.fee_history.update_fee(jump_fee, takes_effect_on, clock);
 }
 
-public(package) fun object_registration_id(record: &GateRecord): address {
+/// Updates the recipient for fees paid to jump through this gate
+public(package) fun update_fee_recipient(record: &mut GateRecord, recipient: address) {
+    record.fee_recipient = recipient;
+}
+
+public(package) fun object_registration_id(record: &GateRecord): ID {
     record.object_registration_id
 }
 

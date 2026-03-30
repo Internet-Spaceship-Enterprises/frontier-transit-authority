@@ -6,7 +6,7 @@ module fta::fta;
 
 use assets::EVE::EVE;
 use fta::constants;
-use fta::gate_record::GateRecord;
+use fta::gate_table::{Self, GateTable};
 use fta::network_node_record::NetworkNodeRecord;
 use sui::balance::{Self, Balance};
 use sui::dynamic_field as df;
@@ -45,7 +45,7 @@ public struct FrontierTransitAuthority has key {
     id: UID,
     deployer_addr: address,
     // The key is the Gate ID, the value is the GateRecord
-    gate_table: LinkedTable<ID, GateRecord>,
+    gate_table: GateTable,
     network_node_table: LinkedTable<ID, NetworkNodeRecord>,
     // The balance of the bounty account (for paying bounties)
     bounty_balance: Balance<EVE>,
@@ -75,7 +75,7 @@ fun init(otw: FTA, ctx: &mut TxContext) {
     transfer::share_object(FrontierTransitAuthority {
         id: object::new(ctx),
         deployer_addr: ctx.sender(),
-        gate_table: linked_table::new<ID, GateRecord>(ctx),
+        gate_table: gate_table::new(ctx),
         network_node_table: linked_table::new<ID, NetworkNodeRecord>(ctx),
         bounty_balance: balance::zero(),
         developer_balance: balance::zero(),
@@ -104,15 +104,14 @@ public fun get_owner_character(fta: &FrontierTransitAuthority): ID {
 
 /// Asserts that a gate is valid for jump or update operations
 public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &Gate) {
-    let gate_id = object::id(gate);
     let linked_gate_id_opt = gate.linked_gate_id();
     // Ensure the gate is linked to another gate
     assert!(linked_gate_id_opt.is_some(), ENoLinkedGate);
     let linked_gate_id = linked_gate_id_opt.borrow();
     // Ensure this gate is in the network
-    assert!(fta.gate_table.contains(gate_id), EGateNotInNetwork);
+    assert!(fta.gate_table.gate_registered(gate), EGateNotInNetwork);
     // Ensure the linked gate is in the network
-    assert!(fta.gate_table.contains(*linked_gate_id), ELinkedGateNotInNetwork);
+    assert!(fta.gate_table.gate_registered_by_id(*linked_gate_id), ELinkedGateNotInNetwork);
     // Ensure the network node for this gate is registered
     assert!(
         fta.network_node_table.contains(*gate.energy_source_id().borrow()),
@@ -120,8 +119,12 @@ public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &G
     );
 }
 
-public(package) fun gate_table(fta: &FrontierTransitAuthority): &LinkedTable<ID, GateRecord> {
+public(package) fun gate_table(fta: &FrontierTransitAuthority): &GateTable {
     &fta.gate_table
+}
+
+public(package) fun gate_table_mut(fta: &mut FrontierTransitAuthority): &mut GateTable {
+    &mut fta.gate_table
 }
 
 public(package) fun network_node_table(
@@ -136,29 +139,6 @@ public(package) fun bounty_balance(fta: &mut FrontierTransitAuthority): &mut Bal
 
 public(package) fun developer_balance(fta: &mut FrontierTransitAuthority): &mut Balance<EVE> {
     &mut fta.developer_balance
-}
-
-public(package) fun add_gate_record(fta: &mut FrontierTransitAuthority, record: GateRecord) {
-    assert!(!fta.gate_table.contains(record.gate_id()), EGateNotInNetwork);
-    fta.gate_table.push_back(record.gate_id(), record);
-}
-
-public(package) fun get_gate_record(fta: &FrontierTransitAuthority, gate: &Gate): &GateRecord {
-    assert!(fta.gate_table.contains(object::id(gate)), EGateNotInNetwork);
-    fta.gate_table.borrow(object::id(gate))
-}
-
-public(package) fun get_gate_record_mut(
-    fta: &mut FrontierTransitAuthority,
-    gate: &Gate,
-): &mut GateRecord {
-    assert!(fta.gate_table.contains(object::id(gate)), EGateNotInNetwork);
-    fta.gate_table.borrow_mut(object::id(gate))
-}
-
-public(package) fun remove_gate_record(fta: &mut FrontierTransitAuthority, gate: &Gate) {
-    assert!(fta.gate_table.contains(object::id(gate)), EGateNotInNetwork);
-    fta.gate_table.remove(object::id(gate)).destroy();
 }
 
 public(package) fun add_network_node_record(
@@ -202,40 +182,12 @@ public(package) fun network_node_registered(
     fta.network_node_table.contains(object::id(network_node))
 }
 
-public fun gate_count(fta: &FrontierTransitAuthority): u64 {
-    fta.gate_table.length()
-}
-
-public fun gate_registered(fta: &FrontierTransitAuthority, gate: &Gate): bool {
-    fta.gate_table.contains(object::id(gate))
-}
+// public fun gate_registered(fta: &FrontierTransitAuthority, gate: &Gate): bool {
+//     fta.gate_table().gate_registered(gate)
+// }
 
 public fun gate_network_node_registered(fta: &FrontierTransitAuthority, gate: &Gate): bool {
     let energy_source_id_opt = gate.energy_source_id();
     assert!(energy_source_id_opt.is_some(), EGateHasNoNetworkNode);
     fta.network_node_table.contains(*energy_source_id_opt.borrow())
-}
-
-// Returns a list of the IDs of all gates managed by the FTA
-public fun managed_gate_ids(fta: &FrontierTransitAuthority): vector<ID> {
-    let mut keys = vector::empty<ID>();
-
-    let cur_ref = fta.gate_table.front();
-    if (option::is_none(cur_ref)) {
-        return keys
-    };
-
-    let mut cur = *option::borrow(cur_ref);
-    vector::push_back(&mut keys, cur);
-
-    loop {
-        let next_ref = fta.gate_table.next(cur);
-        if (option::is_none(next_ref)) {
-            break
-        };
-        cur = *option::borrow(next_ref);
-        vector::push_back(&mut keys, cur);
-    };
-
-    keys
 }
