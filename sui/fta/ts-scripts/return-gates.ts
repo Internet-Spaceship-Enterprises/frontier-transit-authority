@@ -28,6 +28,8 @@ async function returnGateToOwner(
     if (!gateOwnerCapId) {
         throw new Error("Gate 1 OwnerCap not found (make sure the character owns the gate)");
     }
+
+    console.log(`Returning gate: ${gateId}`);
     tx.moveCall({
         target: `${FTA_PACKAGE_ID}::transfer::return_gate_to_owner`,
         arguments: [
@@ -58,8 +60,8 @@ async function main() {
         await hydrateWorldConfig(playerCtx);
 
         await returnGateToOwner(playerCtx, GAME_CHARACTER_B_ID, GATE_ITEM_ID_1);
-        // await delay(getDelayMs());
-        // await returnGateToOwner(playerCtx, GAME_CHARACTER_B_ID, GATE_ITEM_ID_2);
+        await delay(getDelayMs());
+        await returnGateToOwner(playerCtx, GAME_CHARACTER_B_ID, GATE_ITEM_ID_2);
     } catch (error) {
         handleError(error);
     }

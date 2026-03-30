@@ -8,7 +8,7 @@ WORKSPACE_DIR="$SCRIPT_DIR/../../.."
 # Publish the contract under Player B
 sui client switch --address player-b
 
-output=$(sui client test-publish --build-env testnet --pubfile-path $WORKSPACE_DIR/builder-scaffold/deployments/localnet/Pub.localnet.toml --json)
+output=$(sui client test-publish --build-env testnet --pubfile-path $WORKSPACE_DIR/builder-scaffold/deployments/localnet/Pub.localnet.toml --json | tee /dev/tty)
 
 # Switch back to the admin
 sui client switch --address admin
@@ -24,6 +24,7 @@ export const FTA_OBJECT_ID = \"$ftaId\";
 export const FTA_DEV_CAP_ID = \"$devCapId\";
 " > "$SCRIPT_DIR/ts-scripts/config.ts"
 
-pushd  $WORKSPACE_DIR/frontier-gate-network
+start_dir=$(pwd)
+cd $WORKSPACE_DIR/frontier-gate-network
 pnpm set-owner-character
-popd
+cd $start_dir

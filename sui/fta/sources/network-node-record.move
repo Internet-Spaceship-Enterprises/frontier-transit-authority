@@ -5,7 +5,6 @@ public struct NetworkNodeRecord has store {
     transferred_from_character_id: ID,
     transferred_from_wallet_addr: address,
     network_node_id: ID,
-    network_node_owner_cap_id: ID,
 }
 
 public(package) fun new(
@@ -13,15 +12,23 @@ public(package) fun new(
     transferred_from_character_id: ID,
     transferred_from_wallet_addr: address,
     network_node_id: ID,
-    network_node_owner_cap_id: ID,
 ): NetworkNodeRecord {
     NetworkNodeRecord {
         transferred_on: transferred_on,
         transferred_from_character_id: transferred_from_character_id,
         transferred_from_wallet_addr: transferred_from_wallet_addr,
         network_node_id: network_node_id,
-        network_node_owner_cap_id: network_node_owner_cap_id,
     }
+}
+
+/// Destroys a NetworkNodeRecord
+public(package) fun destroy(record: NetworkNodeRecord) {
+    let NetworkNodeRecord {
+        transferred_on: _,
+        transferred_from_character_id: _,
+        transferred_from_wallet_addr: _,
+        network_node_id: _,
+    } = record;
 }
 
 public(package) fun transferred_on(record: &NetworkNodeRecord): &u64 {
@@ -38,8 +45,4 @@ public(package) fun transferred_from_wallet_addr(record: &NetworkNodeRecord): &a
 
 public(package) fun network_node_id(record: &NetworkNodeRecord): &ID {
     &record.network_node_id
-}
-
-public(package) fun network_node_owner_cap_id(record: &NetworkNodeRecord): &ID {
-    &record.network_node_owner_cap_id
 }

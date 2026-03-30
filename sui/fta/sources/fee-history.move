@@ -22,7 +22,7 @@ const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
 // This is in thousanths of a percent
 const FEE_CHANGE_MAX_PERCENTAGE_THOUSANTHS: u64 = 20000; // 20%
 
-public struct Fee has store {
+public struct Fee has drop, store {
     // The fee, in EVE tokens
     jump_fee: u64,
     // The timestamp (milliseconds) when the fee takes effect
@@ -48,6 +48,13 @@ public(package) fun new(intial_jump_fee: u64, clock: &Clock, ctx: &mut TxContext
     FeeHistory {
         history: tab,
     }
+}
+
+public(package) fun destroy(fee_history: FeeHistory) {
+    let FeeHistory {
+        history: history,
+    } = fee_history;
+    history.drop();
 }
 
 public(package) fun update_fee(

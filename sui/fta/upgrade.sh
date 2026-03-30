@@ -8,7 +8,7 @@ WORKSPACE_DIR="$SCRIPT_DIR/../../.."
 # Publish the contract under Player B
 sui client switch --address player-b
 
-output=$(sui client test-upgrade --build-env testnet --pubfile-path $WORKSPACE_DIR/builder-scaffold/deployments/localnet/Pub.localnet.toml --json --verify-deps | tee /dev/tty)
+output=$(sui client test-upgrade --build-env testnet --pubfile-path $WORKSPACE_DIR/builder-scaffold/deployments/localnet/Pub.localnet.toml --json --verify-deps  | tee /dev/tty)
 
 # Switch back to the admin
 sui client switch --address admin

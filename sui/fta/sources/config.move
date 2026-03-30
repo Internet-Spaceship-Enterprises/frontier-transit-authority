@@ -13,6 +13,6 @@ public fun update_fee(
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    let gate_record = fta.get_gate_record_mut(gate, ctx);
+    let gate_record = fta.get_gate_record_mut(gate);
     gate_record.update_fee(jump_fee, takes_effect_on, clock, ctx);
 }

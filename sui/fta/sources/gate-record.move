@@ -16,6 +16,7 @@ public struct GateRecord has store {
     fee_history: FeeHistory,
 }
 
+/// Creates a new GateRecord
 public(package) fun new(
     transferred_on: u64,
     transferred_from_character_id: ID,
@@ -34,6 +35,19 @@ public(package) fun new(
     }
 }
 
+/// Destroys a GateRecord
+public(package) fun destroy(record: GateRecord) {
+    let GateRecord {
+        transferred_on: _,
+        transferred_from_character_id: _,
+        transferred_from_wallet_addr: _,
+        gate_id: _,
+        fee_history: fee_history,
+    } = record;
+    fee_history.destroy();
+}
+
+/// Updates the fee associated with a Gate in a GateRecord
 public(package) fun update_fee(
     record: &mut GateRecord,
     jump_fee: u64,

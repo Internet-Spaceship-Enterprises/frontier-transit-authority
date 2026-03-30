@@ -3,6 +3,7 @@ module fta::transfer;
 use fta::access;
 use fta::fta::{FrontierTransitAuthority, DeveloperCap};
 use fta::gate_record;
+use fta::network_node_record;
 use sui::clock::Clock;
 use sui::transfer::Receiving;
 use world::access::{OwnerCap, ReturnOwnerCapReceipt};
@@ -180,6 +181,7 @@ public fun transfer_gate_pair_same_network_node(
 
     // Transfer the network node for gate 1, if it isn't already owned
     if (!fta.gate_network_node_registered(gate_1)) {
+        // Transfer the owner cap
         network_node_owner_cap
             .destroy_some()
             .transfer_owner_cap_with_receipt(
@@ -187,6 +189,15 @@ public fun transfer_gate_pair_same_network_node(
                 fta.get_owner_character().to_address(),
                 ctx,
             );
+        // Log that we now own the network node
+        fta.add_network_node_record(
+            network_node_record::new(
+                clock.timestamp_ms(),
+                object::id(current_owner),
+                ctx.sender(),
+                object::id(network_node),
+            ),
+        );
     } else {
         network_node_owner_cap.destroy_none();
         network_node_owner_cap_receipt.destroy_none();
@@ -255,6 +266,15 @@ public fun transfer_gate_pair(
                 fta.get_owner_character().to_address(),
                 ctx,
             );
+        // Log that we now own the network node
+        fta.add_network_node_record(
+            network_node_record::new(
+                clock.timestamp_ms(),
+                object::id(current_owner),
+                ctx.sender(),
+                object::id(network_node_1),
+            ),
+        );
     } else {
         network_node_owner_cap_1.destroy_none();
         network_node_owner_cap_receipt_1.destroy_none();
@@ -269,6 +289,15 @@ public fun transfer_gate_pair(
                 fta.get_owner_character().to_address(),
                 ctx,
             );
+        // Log that we now own the network node
+        fta.add_network_node_record(
+            network_node_record::new(
+                clock.timestamp_ms(),
+                object::id(current_owner),
+                ctx.sender(),
+                object::id(network_node_2),
+            ),
+        );
     } else {
         network_node_owner_cap_2.destroy_none();
         network_node_owner_cap_receipt_2.destroy_none();
@@ -282,7 +311,8 @@ fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut Tx
     // TODO: configure the authorization extension
 }
 
-// Transfers a gate back to its original owner
+/// Transfers a gate back to its original owner
+/// TODO: make this a private func and remove the DeveloperCap requirement
 public fun return_gate_to_owner(
     fta: &mut FrontierTransitAuthority,
     _: &DeveloperCap,
@@ -296,7 +326,9 @@ public fun return_gate_to_owner(
     // Transfer it to the original owner
     cap.transfer_owner_cap_with_receipt(
         receipt,
-        fta.get_gate_record(gate, ctx).transferred_from_character_id().to_address(),
+        fta.get_gate_record(gate).transferred_from_character_id().to_address(),
         ctx,
     );
+    // Remove the gate from the network
+    fta.remove_gate_record(gate);
 }

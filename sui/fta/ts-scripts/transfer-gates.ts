@@ -148,6 +148,23 @@ async function prepareTransferGate(
         });
     }
 
+    // Confirm the gates are now managed
+    tx.moveCall({
+        target: `${FTA_PACKAGE_ID}::fta::assert_gate_managed`,
+        arguments: [
+            tx.object(FTA_OBJECT_ID),
+            tx.object(gate1Id),
+        ],
+    });
+    tx.moveCall({
+        target: `${FTA_PACKAGE_ID}::fta::assert_gate_managed`,
+        arguments: [
+            tx.object(FTA_OBJECT_ID),
+            tx.object(gate2Id),
+        ],
+    });
+    console.log(`Transferred gates: \n\t${gate1Id}\n\t${gate2Id}`);
+
     const result = await client.signAndExecuteTransaction({
         transaction: tx,
         signer: keypair,

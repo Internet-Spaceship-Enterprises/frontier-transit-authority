@@ -47,37 +47,3 @@ public(package) fun return_gate_owner_cap(
         ctx,
     );
 }
-
-// public fun cap_test(
-//     fta: &FrontierTransitAuthority,
-//     character: &mut Character,
-//     gate: &Gate,
-//     cap_ticket: Receiving<OwnerCap<Gate>>,
-//     ctx: &TxContext,
-// ) {}
-
-// public fun cap_test2(
-//     fta: &FrontierTransitAuthority,
-//     _: &DeveloperCap,
-//     character: &mut Character,
-//     gate: &Gate,
-//     cap_ticket: Receiving<OwnerCap<Gate>>,
-//     ctx: &TxContext,
-// ) {
-//     assert!(character.character_address() == ctx.sender());
-// }
-
-// public fun cap_test3(
-//     fta: &FrontierTransitAuthority,
-//     _: &DeveloperCap,
-//     character: &mut Character,
-//     gate: &Gate,
-//     cap_ticket: Receiving<OwnerCap<Gate>>,
-//     ctx: &TxContext,
-// ): (OwnerCap<Gate>, ReturnOwnerCapReceipt) {
-//     assert!(character.character_address() == ctx.sender());
-
-//     character.borrow_owner_cap(cap_ticket, ctx)
-// }
-
-// public fun cap_test4() {}
