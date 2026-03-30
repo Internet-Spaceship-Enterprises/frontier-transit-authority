@@ -1,7 +1,7 @@
 module fta::transfer;
 
 use fta::access;
-use fta::fta::FrontierTransitAuthority;
+use fta::fta::{FrontierTransitAuthority, DeveloperCap};
 use fta::gate_record;
 use fta::network_node_record;
 use sui::clock::Clock;
@@ -326,8 +326,10 @@ fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut Tx
 }
 
 /// Transfers a gate back to its original owner
-public(package) fun return_gate_to_owner(
+/// TODO: change this to a private function without the DevCap
+public fun return_gate_to_owner(
     fta: &mut FrontierTransitAuthority,
+    _: &DeveloperCap,
     character: &mut Character,
     gate: &Gate,
     cap_ticket: Receiving<OwnerCap<Gate>>,
