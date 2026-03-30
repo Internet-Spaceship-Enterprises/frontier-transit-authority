@@ -54,6 +54,7 @@ public fun jump_estimate(
     jump_estimate::new(
         fta.gate_registry(),
         fta.network_node_registry(),
+        fta.blacklist(),
         character_id,
         source_gate,
         destination_gate,
@@ -65,7 +66,7 @@ public fun jump_estimate(
 
 /// Gets an quote for a jump. It must be consumed by using it to purchase the jump permit.
 public fun jump_quote(
-    fta: &FrontierTransitAuthority,
+    fta: &mut FrontierTransitAuthority,
     character_id: ID,
     source_gate: &Gate,
     destination_gate: &Gate,
@@ -156,12 +157,15 @@ public fun issue_jump_permit(
     );
 
     let source_gate_fee_recipient = fta.gate_registry().get(source_gate).fee_recipient();
-    let source_gate_fee_coin = payment.split(quote.estimate().source_gate_fee(), ctx);
+    let source_gate_fee_coin = payment.split(quote.estimate().source_gate_fee_scaled(), ctx);
     source_gate_fee_coin.send_funds(source_gate_fee_recipient);
 
     // Get and transfer the destination gate fee
     let destination_gate_fee_recipient = fta.gate_registry().get(destination_gate).fee_recipient();
-    let destination_gate_fee_coin = payment.split(quote.estimate().destination_gate_fee(), ctx);
+    let destination_gate_fee_coin = payment.split(
+        quote.estimate().destination_gate_fee_scaled(),
+        ctx,
+    );
     destination_gate_fee_coin.send_funds(destination_gate_fee_recipient);
 
     // Get and transfer the source network node fee
@@ -170,7 +174,7 @@ public fun issue_jump_permit(
         .get_by_gate(source_gate)
         .fee_recipient();
     let source_network_node_fee_coin = payment.split(
-        quote.estimate().source_network_node_fee(),
+        quote.estimate().source_network_node_fee_scaled(),
         ctx,
     );
     source_network_node_fee_coin.send_funds(source_network_node_fee_recipient);
@@ -181,7 +185,7 @@ public fun issue_jump_permit(
         .get_by_gate(destination_gate)
         .fee_recipient();
     let destination_network_node_fee_coin = payment.split(
-        quote.estimate().destination_network_node_fee(),
+        quote.estimate().destination_network_node_fee_scaled(),
         ctx,
     );
     destination_network_node_fee_coin.send_funds(destination_network_node_fee_recipient);
@@ -191,18 +195,13 @@ public fun issue_jump_permit(
     balance::join(fta.developer_balance(), developer_balance);
 
     // Sanity check that the remaining amount is correct
-    assert!(payment.value() == quote.estimate().bounty_fee(), EWrongPaymentAmount);
+    assert!(payment.value() == quote.estimate().total_bounty_fee(), EWrongPaymentAmount);
     // Transfer the bounty fee
     balance::join(fta.bounty_balance(), payment.into_balance());
 
     // Record the issuance of the permit
-    fta
-        .jump_history_mut()
-        .add(
-            quote.estimate(),
-            character.id(),
-            ctx,
-        );
+    fta.jump_history_add(quote.estimate(), object::id(character), ctx);
+
     source_gate.issue_jump_permit(
         destination_gate,
         character,
@@ -210,8 +209,7 @@ public fun issue_jump_permit(
         clock.timestamp_ms() + quote.estimate().validity_duration(),
         ctx,
     );
+
     // Consume the quote
     quote.destroy();
 }
-
-// TODO: refund jump permit (with restocking fee?)

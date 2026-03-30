@@ -26,9 +26,16 @@ public struct TemporaryBlacklistRecord has store {
     /// How much the character has paid down on their blacklist penalty
     paid_down: u64,
 }
+
 public struct BlacklistCharacter has store {
     permanent: LinkedTable<u64, PermanentBlacklistRecord>,
     temporary: LinkedTable<u64, TemporaryBlacklistRecord>,
+    // In percent
+    permanent_sum: u64,
+    /// Points to the record currently being paid down
+    temporary_front_pointer: Option<u64>,
+    // In percent
+    temporary_sum: u64,
 }
 
 public struct Blacklist has store {
@@ -49,6 +56,7 @@ public(package) fun add(
     character_id: ID,
     penalty_multiplier: u64,
     permanent: bool,
+    penalty_amount: u64,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -61,10 +69,14 @@ public(package) fun add(
                 BlacklistCharacter {
                     permanent: linked_table::new(ctx),
                     temporary: linked_table::new(ctx),
+                    permanent_sum: 0,
+                    temporary_front_pointer: option::none(),
+                    temporary_sum: 0,
                 },
             );
     };
 
+    let blacklist_character = blacklist.records.borrow_mut(character_id);
     if (permanent) {
         // Create the record to be inserted
         let record = PermanentBlacklistRecord {
@@ -72,55 +84,76 @@ public(package) fun add(
             issued_at: clock.timestamp_ms(),
             penalty_multiplier: penalty_multiplier,
         };
-        blacklist.records.borrow_mut(character_id).permanent.push_back(record.issued_at, record);
+        blacklist_character.permanent.push_back(record.issued_at, record);
+        // Add the new record to the permanent penalty sum
+        blacklist_character.permanent_sum = blacklist_character.permanent_sum + penalty_multiplier;
     } else {
         let record = TemporaryBlacklistRecord {
             character_id: character_id,
             issued_at: clock.timestamp_ms(),
             penalty_multiplier: penalty_multiplier,
-            amount_due: 0, // TODO: calculate based on average fee
+            amount_due: penalty_amount,
             paid_down: 0,
         };
-        blacklist.records.borrow_mut(character_id).temporary.push_back(record.issued_at, record);
+        let issued_at = record.issued_at;
+        blacklist_character.temporary.push_back(record.issued_at, record);
+        // If the temporary front pointer is none, that means that all existing temporary records have been paid down.
+        // So, we need to set the front pointer to the new record since it now needs to be paid down.
+        if (blacklist_character.temporary_front_pointer.is_none()) {
+            blacklist_character.temporary_front_pointer = option::some(issued_at);
+        };
+        // Add the new record to the temporary penalty sum
+        blacklist_character.temporary_sum = blacklist_character.temporary_sum + penalty_multiplier;
+    };
+}
+
+/// Pays down a character's temporary blacklist penalty.
+public(package) fun pay_down_penalty(blacklist: &mut Blacklist, character_id: ID, mut amount: u64) {
+    // If the character is not blacklisted, nothing to pay down
+    if (!blacklist.records.contains(character_id)) {
+        return
+    };
+
+    // Get the blacklist for this character
+    let blacklist_character = blacklist.records.borrow_mut(character_id);
+
+    // Keep going as long as there are still outstanding penalties
+    while (blacklist_character.temporary_front_pointer.is_some()) {
+        // Get the oldest record that still has an outstanding penalty
+        let record =
+            &mut blacklist_character.temporary[
+                *blacklist_character.temporary_front_pointer.borrow(),
+            ];
+        if (record.paid_down < record.amount_due) {
+            let remaining_amount = record.amount_due - record.paid_down;
+            if (amount >= remaining_amount) {
+                // This payment fully pays down this record, move to the next one
+                record.paid_down = record.amount_due;
+                amount = amount - remaining_amount;
+            } else {
+                // This payment partially pays down this record, we're done after this
+                record.paid_down = record.paid_down + amount;
+                // Remove this from the temporary penalty sum
+                blacklist_character.temporary_sum =
+                    blacklist_character.temporary_sum - record.penalty_multiplier;
+                break
+            };
+        };
+        // Move to the next record
+        blacklist_character.temporary_front_pointer =
+            *blacklist_character
+                .temporary
+                .next(*blacklist_character.temporary_front_pointer.borrow());
     };
 }
 
 /// Checks if a character is currently blacklisted and returns the applicable penalty multiplier
-public(package) fun get_penalty_multiplier(
-    blacklist: &Blacklist,
-    character_id: ID,
-    clock: &Clock,
-): u64 {
+public(package) fun get_penalty_multiplier(blacklist: &Blacklist, character_id: ID): u64 {
     if (!blacklist.records.contains(character_id)) {
-        return 100; // Not blacklisted, normal fee
+        return 100 // Not blacklisted, normal fee
     };
     let blacklist_character = blacklist.records.borrow(character_id);
 
-    let mut total_penalty_multiplier = 100; // Start with normal fee
-
-    // Add permanent penalties
-    let mut key = blacklist_character.permanent.front();
-    while (key.is_some()) {
-        total_penalty_multiplier =
-            total_penalty_multiplier + blacklist_character.permanent[*key.borrow()].penalty_multiplier;
-        key = blacklist_character.permanent.next(*key.borrow());
-    };
-
-    // Add temporary penalties that have not yet expired
-    key = blacklist_character.temporary.back();
-    while(key.is_some()) {
-        let record = &blacklist_character.temporary[*key.borrow()];
-        if(record.)
-        
-        if (record.end == 0 || clock.timestamp_ms() <= record.end) {
-            total_penalty_multiplier =
-                total_penalty_multiplier + record.penalty_multiplier;
-        };
-        key = blacklist_character.temporary.prev(*key.borrow());
-    };
-
-    if (record.end != 0 && clock.timestamp_ms() > record.end) {
-        return 1; // Blacklist expired, normal fee
-    };
-    record.penalty_multiplier
+    // The penalty multiplier starts at 100 (normal fee) and increases based on the blacklisting records.
+    100 + blacklist_character.permanent_sum + blacklist_character.temporary_sum
 }
