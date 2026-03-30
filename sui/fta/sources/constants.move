@@ -11,16 +11,15 @@ const BOUNTY_FEE: u64 = 20;
 const DEVELOPER_FEE: u64 = 10;
 
 /// The base validity duration (in milliseconds) for a jump permit
-const JUMP_BASE_VALIDITY_DURATION: u64 = 1 * 60 * 1000; // 1 minute
+const JUMP_BASE_VALIDITY_DURATION: u64 = 2 * 60 * 1000; // 2 minutes
 /// The maximum validity duration (in milliseconds) for a jump permit
 const JUMP_MAX_VALIDITY_DURATION: u64 = 24 * 60 * 60 * 1000; // 1 day
 /// The jump permit fee multiplier at max duration
-const JUMP_MAX_VALIDITY_DURATION_MULTIPLIER: u64 = 10; // A permit with max validity is 10x more expensive than a simple just-in-time permit
+const JUMP_MAX_VALIDITY_DURATION_MULTIPLIER: u64 = 20; // A permit with max validity is 20x more expensive than a simple just-in-time permit
 
 // The minimum requirement for how long it takes for a new fee to take effect
 const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
 // The maximum fee percentage increase at a time
-// This is in thousanths of a percent
 const FEE_CHANGE_MAX_PERCENTAGE: u64 = 20; // 20%
 
 // Dynamic field name for the owner character
