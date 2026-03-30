@@ -4,3 +4,4 @@ traces/*
 .coverage*
 Pub.*.toml
 deploy.json
+ts-scripts/config.ts

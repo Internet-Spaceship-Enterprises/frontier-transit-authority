@@ -4,7 +4,7 @@
     "type": "module",
     "description": "The Frontier Gate Network",
     "scripts": {
-        "transfer-gate": "tsx ../world-contracts/ts-scripts/fgn/transfer-gate.ts"
+        "transfer-gate": "tsx sui/fta/ts-scripts/transfer-gate.ts"
     },
     "dependencies": {
         "@mysten/bcs": "^2.0.2",

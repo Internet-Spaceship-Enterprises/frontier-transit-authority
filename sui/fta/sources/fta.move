@@ -130,6 +130,8 @@ public(package) fun gate_pair_hash(gate_a_id: &ID, gate_b_id: &ID): vector<u8> {
     }
 }
 
+public fun gate_in_network(gate_network: &FrontierTransitAuthority, gate: &Gate): bool {}
+
 public fun gate_count(gate_network: &FrontierTransitAuthority): u64 {
     gate_network.gate_table.length()
 }

@@ -49,7 +49,7 @@ set -e
 
 chain_id=$(sui client chain-identifier)
 # Update this package's Move.toml file
-sed -i "/^\[environments\]/,/^\[/{s/^[[:space:]]*$NETWORK[[:space:]]*=.*/$NETWORK = \"$chain_id\"/}" "$SCRIPT_DIR/sui/fgn/Move.toml"
+sed -i "/^\[environments\]/,/^\[/{s/^[[:space:]]*$NETWORK[[:space:]]*=.*/$NETWORK = \"$chain_id\"/}" "$SCRIPT_DIR/sui/fta/Move.toml"
 
 # Ensure the correct network is selected
 sui client switch --env $NETWORK
@@ -98,7 +98,7 @@ SUI_RPC_URL=$RPC_URL
 ADMIN_ADDRESS=$addr_admin
 SPONSOR_ADDRESSES=$addr_admin
 PLAYER_A_ADDRESS=$addr_player_a
-PLAYER_A_ADDRESS=$addr_player_b
+PLAYER_B_ADDRESS=$addr_player_b
 
 ADMIN_PRIVATE_KEY=$(sui keytool export --json --key-identity admin | jq -r .exportedPrivateKey)
 GOVERNOR_PRIVATE_KEY=$ADMIN_PRIVATE_KEY
