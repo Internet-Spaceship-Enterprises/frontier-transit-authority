@@ -18,8 +18,11 @@ public fun update_gate_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
-    assert!(management_cap.is_authorized(object::id(gate)), EManagementCapWrongResource);
     let gate_record = fta.get_gate_record_mut(gate);
+    assert!(
+        management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
+        EManagementCapWrongResource,
+    );
     gate_record.update_fee(jump_fee, takes_effect_on, clock);
 }
 
@@ -32,8 +35,14 @@ public fun update_network_node_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
-    assert!(management_cap.is_authorized(object::id(network_node)), EManagementCapWrongResource);
     let network_node_record = fta.get_network_node_record_mut(network_node);
+    assert!(
+        management_cap.is_authorized(
+            object::id(network_node),
+            network_node_record.object_registration_id(),
+        ),
+        EManagementCapWrongResource,
+    );
     network_node_record.update_fee(jump_fee, takes_effect_on, clock);
 }
 

@@ -1,5 +1,6 @@
 module fta::fee_history;
 
+use fta::constants;
 use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
 
@@ -15,12 +16,6 @@ const ENoFeeActive: vector<u8> = b"No jump fee is currently active";
 const EFeeIncreaseTooLarge: vector<u8> = b"This is too large of a fee increase";
 #[error(code = 11)]
 const ENoFeeChange: vector<u8> = b"The new fee is the same as the existing fee";
-
-// The minimum requirement for how long it takes for a new fee to take effect
-const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
-// The maximum fee percentage increase at a time
-// This is in thousanths of a percent
-const FEE_CHANGE_MAX_PERCENTAGE_THOUSANTHS: u64 = 20000; // 20%
 
 public struct Fee has drop, store {
     // The fee, in EVE tokens
@@ -64,7 +59,10 @@ public(package) fun update_fee(
     clock: &Clock,
 ) {
     // Ensure that enough notice is given for the change
-    assert!(takes_effect_on - clock.timestamp_ms() >= FEE_CHANGE_MINIMUM_NOTICE, ENotEnoughNotice);
+    assert!(
+        takes_effect_on - clock.timestamp_ms() >= constants::fee_change_minimum_notice(),
+        ENotEnoughNotice,
+    );
     // Get the key for the last fee modification
     let last_modified_key_option = fee_history.history.back();
 
@@ -83,7 +81,7 @@ public(package) fun update_fee(
 
     // Ensure that either it's a fee reduction, or the increase is within the limit
     assert!(
-        jump_fee < latest_change.jump_fee || (jump_fee - latest_change.jump_fee) * 100000 / latest_change.jump_fee <= FEE_CHANGE_MAX_PERCENTAGE_THOUSANTHS,
+        jump_fee < latest_change.jump_fee || (jump_fee - latest_change.jump_fee) * 100000 / latest_change.jump_fee <= constants::fee_change_max_percentage() * 1000,
         EFeeIncreaseTooLarge,
     );
 

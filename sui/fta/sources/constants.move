@@ -17,6 +17,16 @@ const JUMP_MAX_VALIDITY_DURATION: u64 = 24 * 60 * 60 * 1000; // 1 day
 /// The jump permit fee multiplier at max duration
 const JUMP_MAX_VALIDITY_DURATION_MULTIPLIER: u64 = 10; // A permit with max validity is 10x more expensive than a simple just-in-time permit
 
+// The minimum requirement for how long it takes for a new fee to take effect
+const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
+// The maximum fee percentage increase at a time
+// This is in thousanths of a percent
+const FEE_CHANGE_MAX_PERCENTAGE: u64 = 20; // 20%
+
+// Dynamic field name for the owner character
+// TODO: delete
+const OWNER_CHARACTER_FIELD_NAME: vector<u8> = b"owner_character";
+
 public(package) fun bounty_fee(): u64 {
     BOUNTY_FEE
 }
@@ -35,4 +45,16 @@ public(package) fun jump_max_validity_duration(): u64 {
 
 public(package) fun jump_max_validity_duration_multiplier(): u64 {
     JUMP_MAX_VALIDITY_DURATION_MULTIPLIER
+}
+
+public(package) fun fee_change_minimum_notice(): u64 {
+    FEE_CHANGE_MINIMUM_NOTICE
+}
+
+public(package) fun fee_change_max_percentage(): u64 {
+    FEE_CHANGE_MAX_PERCENTAGE
+}
+
+public(package) fun owner_character_field_name(): vector<u8> {
+    OWNER_CHARACTER_FIELD_NAME
 }

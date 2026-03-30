@@ -5,6 +5,7 @@ module fta::fta;
 module fta::fta;
 
 use assets::EVE::EVE;
+use fta::constants;
 use fta::gate_record::GateRecord;
 use fta::network_node_record::NetworkNodeRecord;
 use sui::balance::{Self, Balance};
@@ -36,8 +37,6 @@ const EGateNetworkNodeNotRegistered: vector<u8> =
 
 /// The OTW for the module.
 public struct FTA has drop {}
-
-const OWNER_CHARACTER_FIELD_NAME: vector<u8> = b"owner_character";
 
 /// Developer capability
 public struct DeveloperCap has key { id: UID }
@@ -94,24 +93,14 @@ public fun set_owner_character(
 ) {
     assert!(ctx.sender() == fta.deployer_addr);
     assert!(character.character_address() == ctx.sender());
-    df::add(&mut fta.id, OWNER_CHARACTER_FIELD_NAME, object::id(character));
+    df::add(&mut fta.id, constants::owner_character_field_name(), object::id(character));
 }
 
 // Gets the ID of the character that holds gate ownership
 public fun get_owner_character(fta: &FrontierTransitAuthority): ID {
-    assert!(df::exists_(&fta.id, OWNER_CHARACTER_FIELD_NAME), EOwnerCharacterNotSet);
-    *df::borrow(&fta.id, b"owner_character")
+    assert!(df::exists_(&fta.id, constants::owner_character_field_name()), EOwnerCharacterNotSet);
+    *df::borrow(&fta.id, constants::owner_character_field_name())
 }
-
-// public(package) fun get_gate_pair_hash(fta: &FrontierTransitAuthority, gate: &Gate): vector<u8> {
-//     let gate_id = object::id(gate);
-//     let linked_gate_id_opt = gate.linked_gate_id();
-//     assert!(linked_gate_id_opt.is_some(), ENoLinkedGate);
-//     let linked_gate_id = linked_gate_id_opt.borrow();
-//     let key = gate_pair_hash(&gate_id, linked_gate_id);
-//     assert!(fta.gate_table.contains(key), EGateNotInNetwork);
-//     key
-// }
 
 /// Asserts that a gate is valid for jump or update operations
 public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &Gate) {
@@ -150,8 +139,8 @@ public(package) fun developer_balance(fta: &mut FrontierTransitAuthority): &mut 
 }
 
 public(package) fun add_gate_record(fta: &mut FrontierTransitAuthority, record: GateRecord) {
-    assert!(!fta.gate_table.contains(*record.gate_id()), EGateNotInNetwork);
-    fta.gate_table.push_back(*record.gate_id(), record);
+    assert!(!fta.gate_table.contains(record.gate_id()), EGateNotInNetwork);
+    fta.gate_table.push_back(record.gate_id(), record);
 }
 
 public(package) fun get_gate_record(fta: &FrontierTransitAuthority, gate: &Gate): &GateRecord {
@@ -176,7 +165,7 @@ public(package) fun add_network_node_record(
     fta: &mut FrontierTransitAuthority,
     record: NetworkNodeRecord,
 ) {
-    fta.network_node_table.push_back(*record.network_node_id(), record);
+    fta.network_node_table.push_back(record.network_node_id(), record);
 }
 
 public(package) fun get_network_node_record(
@@ -225,11 +214,6 @@ public fun gate_network_node_registered(fta: &FrontierTransitAuthority, gate: &G
     let energy_source_id_opt = gate.energy_source_id();
     assert!(energy_source_id_opt.is_some(), EGateHasNoNetworkNode);
     fta.network_node_table.contains(*energy_source_id_opt.borrow())
-}
-
-// TODO: delete
-public fun assert_gate_managed(fta: &FrontierTransitAuthority, gate: &Gate) {
-    assert!(fta.gate_registered(gate), EGateNotInNetwork);
 }
 
 // Returns a list of the IDs of all gates managed by the FTA
