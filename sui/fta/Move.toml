@@ -1,5 +1,5 @@
 [package]
-name = "fgn"
+name = "fta"
 edition = "2024"
 authors = ["Internet Spaceship Enterprises (admin@internet.spaceship.enterprises)"]
 
@@ -8,4 +8,4 @@ authors = ["Internet Spaceship Enterprises (admin@internet.spaceship.enterprises
 world = { local = "/frontier/world-contracts/contracts/world" }
 
 [environments]
-localnet = "7615e949"
+localnet = "279066ad"

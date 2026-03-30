@@ -1,0 +1,112 @@
+module fta::gate_record;
+
+use fta::fee_history::{Self, FeeHistory};
+use sui::clock::Clock;
+
+#[error(code = 4)]
+const EGateNotYours: vector<u8> = b"You cannot modify the fee for a gate you did not assign to FTA";
+
+public struct GateRecord has store {
+    transferred_on: u64,
+    transferred_from_character_id: ID,
+    transferred_from_wallet_addr: address,
+    gate_a_id: ID,
+    gate_a_owner_cap_id: ID,
+    gate_b_id: ID,
+    gate_b_owner_cap_id: ID,
+    network_node_a_id: Option<ID>,
+    network_node_a_owner_cap_id: Option<ID>,
+    network_node_b_id: Option<ID>,
+    network_node_b_owner_cap_id: Option<ID>,
+    // Where the key is the update timestamp and the value is the new fee structure
+    fee_history: FeeHistory,
+}
+
+public(package) fun new(
+    transferred_on: u64,
+    transferred_from_character_id: ID,
+    transferred_from_wallet_addr: address,
+    gate_a_id: ID,
+    gate_a_owner_cap_id: ID,
+    network_node_a_id: Option<ID>,
+    network_node_a_owner_cap_id: Option<ID>,
+    gate_b_id: ID,
+    gate_b_owner_cap_id: ID,
+    network_node_b_id: Option<ID>,
+    network_node_b_owner_cap_id: Option<ID>,
+    jump_fee: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): GateRecord {
+    GateRecord {
+        transferred_on: transferred_on,
+        transferred_from_character_id: transferred_from_character_id,
+        transferred_from_wallet_addr: transferred_from_wallet_addr,
+        gate_a_id: gate_a_id,
+        gate_a_owner_cap_id: gate_a_owner_cap_id,
+        gate_b_id: gate_b_id,
+        gate_b_owner_cap_id: gate_b_owner_cap_id,
+        network_node_a_id: network_node_a_id,
+        network_node_a_owner_cap_id: network_node_a_owner_cap_id,
+        network_node_b_id: network_node_b_id,
+        network_node_b_owner_cap_id: network_node_b_owner_cap_id,
+        fee_history: fee_history::new(jump_fee, clock, ctx),
+    }
+}
+
+public(package) fun update_fee(
+    record: &mut GateRecord,
+    jump_fee: u64,
+    takes_effect_on: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    // Ensure the sender is the entity that previously owned the gate
+    assert!(record.transferred_from_wallet_addr() == ctx.sender(), EGateNotYours);
+
+    record.fee_history.update_fee(jump_fee, takes_effect_on, clock);
+}
+
+public(package) fun transferred_on(record: &GateRecord): &u64 {
+    &record.transferred_on
+}
+
+public(package) fun transferred_from_character_id(record: &GateRecord): &ID {
+    &record.transferred_from_character_id
+}
+
+public(package) fun transferred_from_wallet_addr(record: &GateRecord): &address {
+    &record.transferred_from_wallet_addr
+}
+
+public(package) fun gate_a_id(record: &GateRecord): &ID {
+    &record.gate_a_id
+}
+
+public(package) fun gate_a_owner_cap_id(record: &GateRecord): &ID {
+    &record.gate_a_owner_cap_id
+}
+
+public(package) fun gate_b_id(record: &GateRecord): &ID {
+    &record.gate_b_id
+}
+
+public(package) fun gate_b_owner_cap_id(record: &GateRecord): &ID {
+    &record.gate_b_owner_cap_id
+}
+
+public(package) fun network_node_a_id(record: &GateRecord): &Option<ID> {
+    &record.network_node_a_id
+}
+
+public(package) fun network_node_a_owner_cap_id(record: &GateRecord): &Option<ID> {
+    &record.network_node_a_owner_cap_id
+}
+
+public(package) fun network_node_b_id(record: &GateRecord): &Option<ID> {
+    &record.network_node_b_id
+}
+
+public(package) fun network_node_b_owner_cap_id(record: &GateRecord): &Option<ID> {
+    &record.network_node_b_owner_cap_id
+}
