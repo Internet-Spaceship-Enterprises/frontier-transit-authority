@@ -131,10 +131,10 @@ ENERGY_REQUIRED_VALUES=500,10,950,50,250,100,200,100,200,100,200,300,50,100,1,10
 # Gate Configuration
 GATE_TYPE_IDS=88086,84955
 MAX_DISTANCES=520340175991902420,1040680351983804840
-" > "$WORKSPACE_DIR/.env" 
+" > "$SCRIPT_DIR/.env" 
 
-cp "$WORKSPACE_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
-cp "$WORKSPACE_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env" 
+cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
+cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env" 
 
 # Clean up deployment directories
 rm -rf "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK/"
@@ -153,9 +153,9 @@ DELAY_SECONDS=0 pnpm create-test-resources $NETWORK
 
 # Update the .env files with the package ID
 world_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/extracted-object-ids.json | jq -r ".world.packageId")
-sed -i "s/WORLD_PACKAGE_ID=/WORLD_PACKAGE_ID=$world_package_id/g" "$WORKSPACE_DIR/.env"
-cp "$WORKSPACE_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
-cp "$WORKSPACE_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"  
+sed -i "s/WORLD_PACKAGE_ID=/WORLD_PACKAGE_ID=$world_package_id/g" "$SCRIPT_DIR/.env"
+cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
+cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"  
 
 # Copy over deployment artifacts
 cp -r "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK" "$WORKSPACE_DIR/builder-scaffold/deployments/"
