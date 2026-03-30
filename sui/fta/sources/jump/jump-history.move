@@ -12,6 +12,12 @@ public struct JumpHistory has store {
     entries: LinkedTable<ID, LinkedTable<ID, JumpHistoryEntry>>,
 }
 
+public(package) fun new(ctx: &mut TxContext): JumpHistory {
+    JumpHistory {
+        entries: linked_table::new(ctx),
+    }
+}
+
 public(package) fun add(
     history: &mut JumpHistory,
     estimate: JumpEstimate,

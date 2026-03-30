@@ -7,6 +7,7 @@ module fta::fta;
 use assets::EVE::EVE;
 use fta::constants;
 use fta::gate_registry::{Self, GateRegistry};
+use fta::jump_history::{Self, JumpHistory};
 use fta::network_node_registry::{Self, NetworkNodeRegistry};
 use sui::balance::{Self, Balance};
 use sui::dynamic_field as df;
@@ -36,8 +37,8 @@ public struct DeveloperCap has key { id: UID }
 public struct FrontierTransitAuthority has key {
     id: UID,
     deployer_addr: address,
-    // The key is the Gate ID, the value is the GateRecord
     gate_registry: GateRegistry,
+    jump_history: JumpHistory,
     network_node_registry: NetworkNodeRegistry,
     // The balance of the bounty account (for paying bounties)
     bounty_balance: Balance<EVE>,
@@ -69,6 +70,7 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         deployer_addr: ctx.sender(),
         gate_registry: gate_registry::new(ctx),
         network_node_registry: network_node_registry::new(ctx),
+        jump_history: jump_history::new(ctx),
         bounty_balance: balance::zero(),
         developer_balance: balance::zero(),
     });
@@ -121,6 +123,14 @@ public(package) fun gate_registry_mut(fta: &mut FrontierTransitAuthority): &mut 
 
 public(package) fun network_node_registry(fta: &FrontierTransitAuthority): &NetworkNodeRegistry {
     &fta.network_node_registry
+}
+
+public(package) fun jump_history(fta: &FrontierTransitAuthority): &JumpHistory {
+    &fta.jump_history
+}
+
+public(package) fun jump_history_mut(fta: &mut FrontierTransitAuthority): &mut JumpHistory {
+    &mut fta.jump_history
 }
 
 public(package) fun network_node_registry_mut(

@@ -18,6 +18,6 @@ public(package) fun destroy(quote: JumpQuote) {
     } = quote;
 }
 
-public(package) fun estimate(quote: &JumpQuote): &JumpEstimate {
-    &quote.estimate
+public(package) fun estimate(quote: &JumpQuote): JumpEstimate {
+    quote.estimate
 }

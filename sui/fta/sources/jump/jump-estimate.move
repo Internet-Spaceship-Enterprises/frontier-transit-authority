@@ -1,7 +1,8 @@
 module fta::jump_estimate;
 
 use fta::constants;
-use fta::fta::FrontierTransitAuthority;
+use fta::gate_registry::GateRegistry;
+use fta::network_node_registry::NetworkNodeRegistry;
 use std::u64::max;
 use sui::clock::Clock;
 use world::gate::Gate;
@@ -36,7 +37,8 @@ public struct JumpEstimate has copy, drop, store {
 /// Gets a fee estimate for a jump from a given gate
 /// TODO: with dynamic linking, require the destination gate as well
 public fun new(
-    fta: &FrontierTransitAuthority,
+    gate_registry: &GateRegistry,
+    network_node_registry: &NetworkNodeRegistry,
     character_id: ID,
     source_gate: &Gate,
     destination_gate: &Gate,
@@ -44,9 +46,7 @@ public fun new(
     clock: &Clock,
     ctx: &mut TxContext,
 ): JumpEstimate {
-    // Ensure both gates are valid and linked
-    fta.check_gate_validity(source_gate);
-    fta.check_gate_validity(destination_gate);
+    // TODO: handle blacklisted
 
     // Ensure the gates are actually linked with each other
     assert!(
@@ -63,14 +63,12 @@ public fun new(
         constants::jump_base_validity_duration(),
     );
 
-    let source_gate_base_fee = fta.gate_registry().get(source_gate).current_fee(clock);
-    let destination_gate_base_fee = fta.gate_registry().get(destination_gate).current_fee(clock);
-    let source_network_node_base_fee = fta
-        .network_node_registry()
+    let source_gate_base_fee = gate_registry.get(source_gate).current_fee(clock);
+    let destination_gate_base_fee = gate_registry.get(destination_gate).current_fee(clock);
+    let source_network_node_base_fee = network_node_registry
         .get_by_id(*source_gate.energy_source_id().borrow())
         .current_fee(clock);
-    let destination_network_node_base_fee = fta
-        .network_node_registry()
+    let destination_network_node_base_fee = network_node_registry
         .get_by_id(*destination_gate.energy_source_id().borrow())
         .current_fee(clock);
 

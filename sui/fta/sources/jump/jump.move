@@ -2,7 +2,7 @@ module fta::jump;
 
 use assets::EVE::EVE;
 use fta::fta::FrontierTransitAuthority;
-use fta::jump_estimate;
+use fta::jump_estimate::{Self, JumpEstimate};
 use fta::jump_quote::{Self, JumpQuote};
 use sui::balance;
 use sui::clock::Clock;
@@ -30,6 +30,31 @@ public(package) fun init_jump_extension(gate: &mut Gate, gate_owner_cap: &OwnerC
     gate.authorize_extension<JumpAuth>(gate_owner_cap);
 }
 
+public fun jump_estimate(
+    fta: &FrontierTransitAuthority,
+    character_id: ID,
+    source_gate: &Gate,
+    destination_gate: &Gate,
+    validity_duration: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): JumpEstimate {
+    // Ensure both gates are valid and linked
+    fta.check_gate_validity(source_gate);
+    fta.check_gate_validity(destination_gate);
+
+    jump_estimate::new(
+        fta.gate_registry(),
+        fta.network_node_registry(),
+        character_id,
+        source_gate,
+        destination_gate,
+        validity_duration,
+        clock,
+        ctx,
+    )
+}
+
 /// Gets an quote for a jump. It must be consumed by using it to purchase the jump permit.
 public fun jump_quote(
     fta: &FrontierTransitAuthority,
@@ -40,7 +65,7 @@ public fun jump_quote(
     clock: &Clock,
     ctx: &mut TxContext,
 ): JumpQuote {
-    let estimate = jump_estimate::new(
+    let estimate = jump_estimate(
         fta,
         character_id,
         source_gate,
@@ -64,8 +89,6 @@ public fun issue_jump_permit(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    // TODO: check if blacklisted
-
     // NOTE: we intentionally do not check if the sender address owns the character,
     // because we want to enable tribes to pay for jumps on behalf of their members
 
@@ -88,6 +111,15 @@ public fun issue_jump_permit(
         coin::value(&payment) == quote.estimate().total_base_fee() + quote.estimate().bounty_fee() + quote.estimate().developer_fee(),
         EWrongPaymentAmount,
     );
+
+    // Record the issuance of the permit
+    fta
+        .jump_history_mut()
+        .add(
+            quote.estimate(),
+            character.id(),
+            ctx,
+        );
 
     // Get and transfer the source gate fee
     let source_gate_fee_recipient = fta.gate_registry().get(source_gate).fee_recipient();
