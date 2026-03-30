@@ -9,7 +9,8 @@
         "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts",
         "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts",
         "datetime": "tsx sui/fta/ts-scripts/datetime.ts",
-        "publish": "tsx sui/fta/ts-scripts/publish.ts"
+        "publish": "tsx sui/fta/ts-scripts/publish.ts",
+        "exchange-upgrade-cap": "tsx sui/fta/ts-scripts/exchange-upgrade-cap.ts"
     },
     "dependencies": {
         "@evefrontier/dapp-kit": "^0.1.7",

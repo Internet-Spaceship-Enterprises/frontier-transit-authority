@@ -3,8 +3,7 @@ module fta::jump;
 use assets::EVE::EVE;
 use fta::blacklist::Blacklist;
 use fta::constants;
-use fta::gate_control;
-use fta::gate_registry::GateRegistry;
+use fta::gate_registry::{Self, GateRegistry};
 use fta::jump_auth::{Self, JumpAuth};
 use fta::jump_history::JumpHistory;
 use fta::jump_quote::JumpQuote;
@@ -93,7 +92,7 @@ public(package) fun issue_jump_permit(
     assert!(destination_network_node.is_network_node_online(), ENetworkNodeOffline);
 
     // Power up the gates!
-    gate_control::change_gate_online(
+    gate_registry::change_gate_online(
         gate_registry,
         network_node_registry,
         source_gate,
@@ -102,7 +101,7 @@ public(package) fun issue_jump_permit(
         true,
         energy_config,
     );
-    gate_control::change_gate_online(
+    gate_registry::change_gate_online(
         gate_registry,
         network_node_registry,
         destination_gate,

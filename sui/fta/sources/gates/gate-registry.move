@@ -386,6 +386,31 @@ public(package) fun update_gate_metadata(
     gate.update_metadata_url(gate_owner_cap, "http://localhost:5173");
 }
 
+/// Onlines or Offlines an FTA gate if it's not already online
+public(package) fun change_gate_online(
+    gate_registry: &GateRegistry,
+    network_node_registry: &NetworkNodeRegistry,
+    gate: &mut Gate,
+    gate_owner_cap: &OwnerCap<Gate>,
+    network_node: &mut NetworkNode,
+    online: bool,
+    energy_config: &EnergyConfig,
+) {
+    assert!(gate_registry.registered(gate), EGateNotInNetwork);
+    assert!(gate.energy_source_id().is_some(), EGateHasNoNetworkNode);
+    assert!(
+        network_node_registry.registered_by_id(*gate.energy_source_id().borrow()),
+        ENetworkNodeNotRegistered,
+    );
+    if (gate.is_online() != online) {
+        if (online) {
+            gate.online(network_node, energy_config, gate_owner_cap);
+        } else {
+            gate.offline(network_node, energy_config, gate_owner_cap);
+        };
+    }
+}
+
 // Transfers a management cap for a gate to a new owner and updates the gate record to reflect the new owner
 public(package) fun transfer_management_cap(
     registry: &mut GateRegistry,

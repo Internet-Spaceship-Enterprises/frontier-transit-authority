@@ -2,6 +2,7 @@ module fta::donations;
 
 use assets::EVE::EVE;
 use fta::fta::FrontierTransitAuthority;
+use fta::upgrade_cap::UpgradeCap;
 use sui::balance;
 use sui::coin::Coin;
 
@@ -15,4 +16,16 @@ public fun donate_to_bounty_pool(fta: &mut FrontierTransitAuthority, payment: Co
 public fun donate_to_developer_pool(fta: &mut FrontierTransitAuthority, payment: Coin<EVE>) {
     fta.assert_upgrade_cap_exchanged();
     balance::join(fta.developer_balance(), payment.into_balance());
+}
+
+/// Transfers coins from the developer balance to another address
+public fun transfer_developer_balance(
+    fta: &mut FrontierTransitAuthority,
+    _: &UpgradeCap,
+    recipient: address,
+    value: u64,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    let transfer_balance = fta.developer_balance().split(value);
+    transfer_balance.send_funds(recipient);
 }

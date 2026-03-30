@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Transaction } from "@mysten/sui/transactions";
-import { FTA_PACKAGE_ID, FTA_OBJECT_ID, FTA_DEV_CAP_ID } from "./config";
+import { FTA_PACKAGE_ID, FTA_OBJECT_ID, FTA_NEW_UPGRADE_CAP_ID } from "./config";
 import { MODULES } from "../../../ts-scripts/utils/config";
 import {
     getEnvConfig,
@@ -29,10 +29,10 @@ async function returnGateToOwner(
 
     console.log(`Returning gate: ${gateId}`);
     tx.moveCall({
-        target: `${FTA_PACKAGE_ID}::registration::return_gate_to_owner`,
+        target: `${FTA_PACKAGE_ID}::fta::return_gate_to_owner`,
         arguments: [
             tx.object(FTA_OBJECT_ID),
-            tx.object(FTA_DEV_CAP_ID),
+            tx.object(FTA_NEW_UPGRADE_CAP_ID),
             tx.object(gateId),
             tx.object(gateOwnerCapId),
         ],

@@ -27,7 +27,7 @@ async function registerNetworkNode(ctx: ReturnType<typeof initializeContext>, tx
     });
 
     tx.moveCall({
-        target: `${FTA_PACKAGE_ID}::registration::register_network_node`,
+        target: `${FTA_PACKAGE_ID}::fta::register_network_node`,
         arguments: [
             tx.object(FTA_OBJECT_ID),
             tx.object(characterObjectId),
@@ -98,7 +98,7 @@ async function prepareTransferGate(
 
     if (gate1NetworkNodeId == gate2NetworkNodeId) {
         tx.moveCall({
-            target: `${FTA_PACKAGE_ID}::registration::transfer_gate_pair_same_network_node`,
+            target: `${FTA_PACKAGE_ID}::fta::transfer_gate_pair_same_network_node`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -106,14 +106,6 @@ async function prepareTransferGate(
                 gate1OwnerCap,
                 gate1OwnerReceipt,
                 tx.object(gate1NetworkNodeId),
-                // tx.object.option({
-                //     type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
-                //     value: nn1OwnerCap,
-                // }),
-                // tx.object.option({
-                //     type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
-                //     value: nn1OwnerReceipt,
-                // }),
                 tx.pure.u64(99),
                 tx.pure.address(FTA_OBJECT_ID),
                 tx.object(gate2Id),
@@ -130,22 +122,9 @@ async function prepareTransferGate(
 
         // Register the network nodes if they are not already registered
         tx = await registerNetworkNode(ctx, tx, characterObjectId, gate2NetworkNodeId);
-        // let nn2OwnerCap = null;
-        // let nn2OwnerReceipt = null;
-        // if (! await gateNetworkNodeRegistered(gate2Id, client, address)) {
-        //     const nn2OwnerCapId = await getNetworkNodeOwnerCapId(gate2NetworkNodeId, client, config, address);
-        //     if (!nn2OwnerCapId) {
-        //         throw "Unable to load gate 2's Network Node Owner Cap ID";
-        //     }
-        //     [nn2OwnerCap, nn2OwnerReceipt] = tx.moveCall({
-        //         target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
-        //         typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
-        //         arguments: [tx.object(characterObjectId), tx.object(nn2OwnerCapId)],
-        //     });
-        // }
 
         tx.moveCall({
-            target: `${FTA_PACKAGE_ID}::registration::transfer_gate_pair`,
+            target: `${FTA_PACKAGE_ID}::fta::transfer_gate_pair`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -153,28 +132,12 @@ async function prepareTransferGate(
                 gate1OwnerCap,
                 gate1OwnerReceipt,
                 tx.object(gate1NetworkNodeId),
-                // tx.object.option({
-                //     type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
-                //     value: nn1OwnerCap,
-                // }),
-                // tx.object.option({
-                //     type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
-                //     value: nn1OwnerReceipt,
-                // }),
                 tx.pure.u64(99),
                 tx.pure.address(FTA_OBJECT_ID),
                 tx.object(gate2Id),
                 gate2OwnerCap,
                 gate2OwnerReceipt,
                 tx.object(gate2NetworkNodeId),
-                // tx.object.option({
-                //     type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
-                //     value: nn2OwnerCap,
-                // }),
-                // tx.object.option({
-                //     type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
-                //     value: nn2OwnerReceipt,
-                // }),
                 tx.pure.u64(99),
                 tx.pure.address(FTA_OBJECT_ID),
                 tx.object(config.energyConfig),

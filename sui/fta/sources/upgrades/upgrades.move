@@ -2,6 +2,7 @@ module fta::upgrades;
 
 use fta::constants;
 use fta::jump_history::JumpHistory;
+use fta::upgrade_cap::UpgradeCap;
 use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
 use sui::package;
@@ -28,11 +29,6 @@ const EVoteFailed: vector<u8> =
 const EVotePassed: vector<u8> =
     b"Voting for this upgrade proposal has passed (more votes in favour than against)";
 
-public struct UpgradeCap has key, store {
-    id: UID,
-    cap: package::UpgradeCap,
-}
-
 public struct UpgradeProposalVote has drop, store {
     voted_on: u64,
     in_favour: bool,
@@ -54,17 +50,6 @@ public struct UpgradeProposal has store {
 public struct UpgradeManager has store {
     /// The currently proposed upgrade, if any
     current_proposal: Option<UpgradeProposal>,
-}
-
-/// Exchange the default UpgradeCap for a custom one with much stricter permissions.
-public(package) fun new_upgrade_cap(
-    original_upgrade_cap: package::UpgradeCap,
-    ctx: &mut TxContext,
-): UpgradeCap {
-    UpgradeCap {
-        id: object::new(ctx),
-        cap: original_upgrade_cap,
-    }
 }
 
 /// Exchange the default UpgradeCap for a custom one with much stricter permissions.
@@ -218,10 +203,5 @@ public(package) fun authorize_upgrade(
     upgrade_manager.clear_proposal();
 
     // Authorize the upgrade and return the UpgradeTicket
-    cap.cap.authorize_upgrade(package::compatible_policy(), digest)
-}
-
-/// Commits the upgrade after it has been authorized and the new package has been published.
-public fun commit_upgrade(cap: &mut UpgradeCap, receipt: package::UpgradeReceipt) {
-    cap.cap.commit_upgrade(receipt)
+    cap.authorize_upgrade(digest)
 }

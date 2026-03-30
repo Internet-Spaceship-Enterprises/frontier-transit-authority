@@ -13,7 +13,8 @@ use fta::jump_history::{Self, JumpHistory};
 use fta::jump_quote::{Self, JumpQuote};
 use fta::killmail_registry::{Self, KillmailRegistry};
 use fta::network_node_registry::{Self, NetworkNodeRegistry};
-use fta::upgrades::{Self, UpgradeCap, UpgradeManager};
+use fta::upgrade_cap::{Self, UpgradeCap};
+use fta::upgrades::{Self, UpgradeManager};
 use sui::balance::{Self, Balance};
 use sui::clock::Clock;
 use sui::coin::Coin;
@@ -94,15 +95,19 @@ fun init(otw: FTA, ctx: &mut TxContext) {
 }
 
 /// Exchange the default UpgradeCap for a custom one with much stricter permissions.
+/// Transfers the new upgrade cap to the sender of the transaction and returns the ID of the new cap.
 public fun exchange_upgrade_cap(
     fta: &mut FrontierTransitAuthority,
     original_upgrade_cap: package::UpgradeCap,
     ctx: &mut TxContext,
-): UpgradeCap {
+): ID {
     // Mark that the upgrade cap has been exchanged, so now upgrades are restricted
     // to group consensus for security.
     fta.upgrade_cap_exchanged = true;
-    upgrades::new_upgrade_cap(original_upgrade_cap, ctx)
+    let new_cap = upgrade_cap::new_upgrade_cap(original_upgrade_cap, ctx);
+    let new_cap_id = object::id(&new_cap);
+    new_cap.transfer(ctx.sender());
+    new_cap_id
 }
 
 public(package) fun uid(fta: &FrontierTransitAuthority): &UID {
@@ -314,7 +319,7 @@ public fun register_network_node(
 }
 
 /// Registers a pair of gates with the FTA when both gates are linked to the same network node (for localnet testing)
-public fun transfer_gate_pair_same_network_node(
+public fun register_gate_pair_same_network_node(
     fta: &mut FrontierTransitAuthority,
     current_owner: &Character,
     gate_1: &mut Gate,
@@ -359,8 +364,8 @@ public fun transfer_gate_pair_same_network_node(
         );
 }
 
-/// Transfers a pair of gates (which have different network nodes) to the FTA
-public fun transfer_gate_pair(
+/// Registers a pair of gates (which have different network nodes) with the FTA
+public fun register_gate_pair(
     fta: &mut FrontierTransitAuthority,
     current_owner: &Character,
     gate_1: &mut Gate,
@@ -405,6 +410,19 @@ public fun transfer_gate_pair(
             clock,
             ctx,
         );
+}
+
+/// Deregisters a gate from the FTA and transfers ownership to whoever holds the ManagementCap for it
+public fun deregister_gate(
+    fta: &mut FrontierTransitAuthority,
+    _: &UpgradeCap,
+    gate: &mut Gate,
+    owner_cap: Receiving<OwnerCap<Gate>>,
+    ctx: &mut TxContext,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    let owner_cap = borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap, ctx);
+    fta.gate_registry.deregister(gate, owner_cap);
 }
 
 //=================================
@@ -532,6 +550,7 @@ public fun jump_permit(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    fta.assert_upgrade_cap_exchanged();
     // Ensure the gates are valid (linked, both source and destination are managed by FTA, network nodes present and registered)
     fta.check_gate_validity(source_gate);
     fta.check_gate_validity(destination_gate);
