@@ -1,6 +1,7 @@
 module fta::killmail_registry;
 
 use fta::blacklist::Blacklist;
+use fta::bounty_board::BountyBoard;
 use fta::constants;
 use fta::gate_registry::GateRegistry;
 use fta::jump_history::JumpHistory;
@@ -31,6 +32,7 @@ public(package) fun process_killmail(
     network_node_registry: &mut NetworkNodeRegistry,
     jump_history_registry: &mut JumpHistory,
     blacklist: &mut Blacklist,
+    bounty_board: &mut BountyBoard,
     object_registry: &ObjectRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
@@ -56,19 +58,19 @@ public(package) fun process_killmail(
         *avg_jump_fee_opt.borrow()
     };
 
-    let mut deserves_blacklisting = false;
+    let mut deserves_penalty = false;
 
     if (killmail.is_structure_loss()) {
         // Check if the killmail is for a gate or a network node
         if (gate_registry.registered_by_id(victim_object_id)) {
-            deserves_blacklisting = true;
+            deserves_penalty = true;
             // The killmail is for a gate, so we need to update the gate registry
             gate_registry.destroyed(victim_object_id);
         } else if (network_node_registry.registered_by_id(victim_object_id)) {
             let record = network_node_registry.get_by_id_mut(victim_object_id);
 
             // Only punish for the kill if the network node's uptime is above the minimum requirement (node is in good standing)
-            deserves_blacklisting =
+            deserves_penalty =
                 record.uptime_avg(constants::network_node_uptime_requirement_period(), clock) >= constants::network_node_uptime_requirement_for_blacklist();
 
             // The killmail is for a network node, so we need to update the network node registry
@@ -77,7 +79,7 @@ public(package) fun process_killmail(
     };
 
     // If it was an FTA asset, we must administer punishment
-    if (deserves_blacklisting) {
+    if (deserves_penalty) {
         blacklist.add(
             killmail,
             false,
@@ -86,5 +88,9 @@ public(package) fun process_killmail(
             clock,
             ctx,
         );
+        ERROR
+        // TODO: add bounty
     };
+    ERROR
+    // TODO: pay bounties if the target was on the bounty board
 }

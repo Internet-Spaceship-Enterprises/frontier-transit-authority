@@ -195,7 +195,7 @@ public fun issue_jump_permit(
     // Sanity check that the remaining amount is correct
     assert!(payment.value() == quote.estimate().total_bounty_fee(), EWrongPaymentAmount);
     // Transfer the bounty fee
-    balance::join(fta.bounty_balance(), payment.into_balance());
+    balance::join(fta.bounty_balance_mut(), payment.into_balance());
 
     // Record the issuance of the permit
     fta.jump_history_add(quote.estimate(), object::id(character), ctx);

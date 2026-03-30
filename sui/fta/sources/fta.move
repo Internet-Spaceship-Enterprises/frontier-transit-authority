@@ -6,6 +6,7 @@ module fta::fta;
 
 use assets::EVE::EVE;
 use fta::blacklist::{Self, Blacklist};
+use fta::bounty_board::{Self, BountyBoard};
 use fta::gate_registry::{Self, GateRegistry};
 use fta::jump_estimate::JumpEstimate;
 use fta::jump_history::{Self, JumpHistory};
@@ -45,8 +46,7 @@ public struct FrontierTransitAuthority has key {
     network_node_registry: NetworkNodeRegistry,
     killmail_registry: KillmailRegistry,
     blacklist: Blacklist,
-    // The balance of the bounty account (for paying bounties)
-    bounty_balance: Balance<EVE>,
+    bounty_board: BountyBoard,
     // The balance of the developer account (to fund development efforts and Sui transaction fees)
     developer_balance: Balance<EVE>,
 }
@@ -69,7 +69,7 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         jump_history: jump_history::new(ctx),
         killmail_registry: killmail_registry::new(ctx),
         blacklist: blacklist::new(ctx),
-        bounty_balance: balance::zero(),
+        bounty_board: bounty_board::new(ctx),
         developer_balance: balance::zero(),
     };
 
@@ -120,6 +120,14 @@ public(package) fun network_node_registry(fta: &FrontierTransitAuthority): &Netw
     &fta.network_node_registry
 }
 
+public(package) fun bounty_board(fta: &FrontierTransitAuthority): &BountyBoard {
+    &fta.bounty_board
+}
+
+public(package) fun bounty_board_mut(fta: &mut FrontierTransitAuthority): &mut BountyBoard {
+    &mut fta.bounty_board
+}
+
 public(package) fun jump_history(fta: &FrontierTransitAuthority): &JumpHistory {
     &fta.jump_history
 }
@@ -134,8 +142,8 @@ public(package) fun network_node_registry_mut(
     &mut fta.network_node_registry
 }
 
-public(package) fun bounty_balance(fta: &mut FrontierTransitAuthority): &mut Balance<EVE> {
-    &mut fta.bounty_balance
+public(package) fun bounty_balance_mut(fta: &mut FrontierTransitAuthority): &mut Balance<EVE> {
+    fta.bounty_board.bounty_balance_mut()
 }
 
 public(package) fun developer_balance(fta: &mut FrontierTransitAuthority): &mut Balance<EVE> {
@@ -183,6 +191,7 @@ public fun process_killmails(
                 &mut fta.network_node_registry,
                 &mut fta.jump_history,
                 &mut fta.blacklist,
+                &mut fta.bounty_board,
                 object_registry,
                 clock,
                 ctx,
