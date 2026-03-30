@@ -8,17 +8,23 @@ use assets::EVE::EVE;
 use fta::blacklist::{Self, Blacklist};
 use fta::bounty_board::{Self, BountyBoard};
 use fta::gate_registry::{Self, GateRegistry};
-use fta::jump_estimate::JumpEstimate;
+use fta::jump;
 use fta::jump_history::{Self, JumpHistory};
+use fta::jump_quote::{Self, JumpQuote};
 use fta::killmail_registry::{Self, KillmailRegistry};
 use fta::network_node_registry::{Self, NetworkNodeRegistry};
 use fta::upgrades::{Self, UpgradeCap, UpgradeManager};
 use sui::balance::{Self, Balance};
 use sui::clock::Clock;
+use sui::coin::Coin;
 use sui::package::{Self, Publisher};
+use sui::transfer::Receiving;
+use world::access::{Self, OwnerCap, ReturnOwnerCapReceipt};
 use world::character::Character;
+use world::energy::EnergyConfig;
 use world::gate::Gate;
 use world::killmail::Killmail;
+use world::location::LocationRegistry;
 use world::network_node::NetworkNode;
 use world::object_registry::ObjectRegistry;
 
@@ -35,6 +41,11 @@ const EGateNetworkNodeNotRegistered: vector<u8> =
 #[error(code = 5)]
 const EUpgradeCapNotExchanged: vector<u8> =
     b"The upgrade cap has not been exchanged for a custom one, making this package insecure to use";
+#[error(code = 6)]
+const EWrongOwnerCap: vector<u8> = b"The provided OwnerCap is not the right one for this assembly";
+#[error(code = 7)]
+const EWrongSender: vector<u8> =
+    b"The returned OwnerCap receipt does not match the sender of the transaction";
 
 /// The OTW for the module.
 public struct FTA has drop {}
@@ -174,6 +185,229 @@ public(package) fun assert_upgrade_cap_exchanged(fta: &FrontierTransitAuthority)
 }
 
 //=================================
+// Access operations
+//=================================
+
+public struct OwnerCapReceipt<phantom T> {
+    owner_id: address,
+    owner_cap_id: ID,
+}
+
+fun borrow_owner_cap<T: key>(
+    fta: &mut FrontierTransitAuthority,
+    cap_ticket: Receiving<OwnerCap<T>>,
+    ctx: &TxContext,
+): (OwnerCap<T>, OwnerCapReceipt<T>) {
+    // Get the owner cap and receipt
+    let owner_cap = access::receive_owner_cap(fta.uid_mut(), cap_ticket);
+    let receipt = OwnerCapReceipt<T> {
+        owner_id: ctx.sender(),
+        owner_cap_id: object::id(&owner_cap),
+    };
+    (owner_cap, receipt)
+}
+
+/// Returns an OwnerCap<Gate> to the FTA
+public(package) fun return_owner_cap<T: key>(
+    fta: &FrontierTransitAuthority,
+    owner_cap: OwnerCap<T>,
+    receipt: OwnerCapReceipt<T>,
+    ctx: &TxContext,
+) {
+    // Ensure the right thing is being returned
+    assert!(object::id(&owner_cap) == receipt.owner_cap_id, EWrongOwnerCap);
+    assert!(ctx.sender() == receipt.owner_id, EWrongSender);
+    access::transfer_owner_cap(owner_cap, object::id(fta).to_address());
+    // Consume the receipt
+    let OwnerCapReceipt<T> {
+        owner_id: _,
+        owner_cap_id: _,
+    } = receipt;
+}
+
+// Transfers an OwnerCap to a recipient outside of the FTA
+public(package) fun transfer_owner_cap<T: key>(
+    fta: &mut FrontierTransitAuthority,
+    cap_ticket: Receiving<OwnerCap<T>>,
+    recipient: address,
+    ctx: &TxContext,
+) {
+    let (
+        cap,
+        OwnerCapReceipt<T> {
+            owner_id: _,
+            owner_cap_id: _,
+        },
+    ) = borrow_owner_cap(fta, cap_ticket, ctx);
+    access::transfer_owner_cap(cap, recipient);
+}
+
+/// Borrows an OwnerCap<Gate> from the FTA for privileged operations
+public(package) fun borrow_gate_owner_cap(
+    fta: &mut FrontierTransitAuthority,
+    gate: &Gate,
+    cap_ticket: Receiving<OwnerCap<Gate>>,
+    ctx: &TxContext,
+): (OwnerCap<Gate>, OwnerCapReceipt<Gate>) {
+    // Ensure FTA controls the gate
+    assert!(fta.gate_registry().registered(gate), EGateNotInNetwork);
+
+    // Get the owner cap and receipt
+    let (owner_cap, receipt) = borrow_owner_cap(fta, cap_ticket, ctx);
+
+    // Ensure the correct OwnerCap was passed in
+    assert!(gate.owner_cap_id() == object::id(&owner_cap), EWrongOwnerCap);
+    (owner_cap, receipt)
+}
+
+/// Borrows an OwnerCap<Gate> from the FTA for privileged operations, without a return receipt (DANGEROUS)
+public(package) fun borrow_gate_owner_cap_no_receipt(
+    fta: &mut FrontierTransitAuthority,
+    gate: &Gate,
+    cap_ticket: Receiving<OwnerCap<Gate>>,
+    ctx: &TxContext,
+): OwnerCap<Gate> {
+    // Ensure FTA controls the gate
+    assert!(fta.gate_registry().registered(gate), EGateNotInNetwork);
+
+    // Get the owner cap and receipt
+    let (
+        owner_cap,
+        OwnerCapReceipt<Gate> {
+            owner_id: _,
+            owner_cap_id: _,
+        },
+    ) = borrow_owner_cap(fta, cap_ticket, ctx);
+
+    // Ensure the correct OwnerCap was passed in
+    assert!(gate.owner_cap_id() == object::id(&owner_cap), EWrongOwnerCap);
+    owner_cap
+}
+
+//=================================
+// Registration operations
+//=================================
+
+/// Registers a network node with the FTA
+public fun register_network_node(
+    fta: &mut FrontierTransitAuthority,
+    current_owner: &Character,
+    network_node: &NetworkNode,
+    network_node_owner_cap: &OwnerCap<NetworkNode>,
+    jump_fee: u64,
+    fee_recipient: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    fta
+        .network_node_registry
+        .register(
+            current_owner,
+            network_node,
+            network_node_owner_cap,
+            jump_fee,
+            fee_recipient,
+            clock,
+            ctx,
+        );
+}
+
+/// Registers a pair of gates with the FTA when both gates are linked to the same network node (for localnet testing)
+public fun transfer_gate_pair_same_network_node(
+    fta: &mut FrontierTransitAuthority,
+    current_owner: &Character,
+    gate_1: &mut Gate,
+    gate_1_owner_cap: OwnerCap<Gate>,
+    gate_1_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node: &mut NetworkNode,
+    jump_fee_1: u64,
+    fee_recipient_1: address,
+    gate_2: &mut Gate,
+    gate_2_owner_cap: OwnerCap<Gate>,
+    gate_2_owner_cap_receipt: ReturnOwnerCapReceipt,
+    jump_fee_2: u64,
+    fee_recipient_2: address,
+    energy_config: &EnergyConfig,
+    location_registry: &LocationRegistry,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    let fta_addr = object::id(fta).to_address();
+    fta
+        .gate_registry
+        .transfer_gate_pair_same_network_node(
+            fta_addr,
+            &fta.network_node_registry,
+            current_owner,
+            gate_1,
+            gate_1_owner_cap,
+            gate_1_owner_cap_receipt,
+            network_node,
+            jump_fee_1,
+            fee_recipient_1,
+            gate_2,
+            gate_2_owner_cap,
+            gate_2_owner_cap_receipt,
+            jump_fee_2,
+            fee_recipient_2,
+            energy_config,
+            location_registry,
+            clock,
+            ctx,
+        );
+}
+
+/// Transfers a pair of gates (which have different network nodes) to the FTA
+public fun transfer_gate_pair(
+    fta: &mut FrontierTransitAuthority,
+    current_owner: &Character,
+    gate_1: &mut Gate,
+    gate_1_owner_cap: OwnerCap<Gate>,
+    gate_1_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node_1: &mut NetworkNode,
+    jump_fee_1: u64,
+    fee_recipient_1: address,
+    gate_2: &mut Gate,
+    gate_2_owner_cap: OwnerCap<Gate>,
+    gate_2_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node_2: &mut NetworkNode,
+    jump_fee_2: u64,
+    fee_recipient_2: address,
+    energy_config: &EnergyConfig,
+    location_registry: &LocationRegistry,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    let fta_addr = object::id(fta).to_address();
+    fta
+        .gate_registry
+        .transfer_gate_pair(
+            fta_addr,
+            &fta.network_node_registry,
+            current_owner,
+            gate_1,
+            gate_1_owner_cap,
+            gate_1_owner_cap_receipt,
+            network_node_1,
+            jump_fee_1,
+            fee_recipient_1,
+            gate_2,
+            gate_2_owner_cap,
+            gate_2_owner_cap_receipt,
+            network_node_2,
+            jump_fee_2,
+            fee_recipient_2,
+            energy_config,
+            location_registry,
+            clock,
+            ctx,
+        );
+}
+
+//=================================
 // Blacklist operations
 //=================================
 
@@ -215,6 +449,20 @@ public fun assert_gate_managed(fta: &mut FrontierTransitAuthority, gate: &Gate) 
     fta.gate_registry.registered(gate);
 }
 
+/// Updates the metadata for a registered gate
+public fun update_gate_metadata(
+    fta: &mut FrontierTransitAuthority,
+    gate: &mut Gate,
+    gate_owner_cap: Receiving<OwnerCap<Gate>>,
+    location_registry: &LocationRegistry,
+    ctx: &mut TxContext,
+) {
+    fta.assert_upgrade_cap_exchanged();
+    let (cap, receipt) = borrow_gate_owner_cap(fta, gate, gate_owner_cap, ctx);
+    fta.gate_registry.update_gate_metadata(gate, &cap, location_registry);
+    return_owner_cap(fta, cap, receipt, ctx)
+}
+
 //=================================
 // Network node operations
 //=================================
@@ -242,13 +490,99 @@ public fun network_node_update(
 // Jump operations
 //=================================
 
-public(package) fun jump_history_add(
+/// Prepares a quote for a jump between two gates, which can be used to inform the user of the cost of the jump before they commit to purchasing the permit
+public fun jump_quote(
     fta: &mut FrontierTransitAuthority,
-    estimate: JumpEstimate,
     character_id: ID,
+    source_gate: &Gate,
+    destination_gate: &Gate,
+    validity_duration: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): JumpQuote {
+    fta.assert_upgrade_cap_exchanged();
+    // Ensure both gates are valid and linked
+    fta.check_gate_validity(source_gate);
+    fta.check_gate_validity(destination_gate);
+    jump_quote::new(
+        &fta.gate_registry,
+        &fta.network_node_registry,
+        &fta.blacklist,
+        character_id,
+        source_gate,
+        destination_gate,
+        validity_duration,
+        clock,
+        ctx,
+    )
+}
+
+public fun jump_permit(
+    fta: &mut FrontierTransitAuthority,
+    character: &mut Character,
+    quote: JumpQuote,
+    source_gate: &mut Gate,
+    source_gate_owner_cap: Receiving<OwnerCap<Gate>>,
+    source_network_node: &mut NetworkNode,
+    destination_gate: &mut Gate,
+    destination_gate_owner_cap: Receiving<OwnerCap<Gate>>,
+    destination_network_node: &mut NetworkNode,
+    payment: Coin<EVE>,
+    energy_config: &EnergyConfig,
+    clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    fta.jump_history.add(&mut fta.blacklist, estimate, character_id, ctx);
+    // Ensure the gates are valid (linked, both source and destination are managed by FTA, network nodes present and registered)
+    fta.check_gate_validity(source_gate);
+    fta.check_gate_validity(destination_gate);
+    // Borrow the owner caps
+    let (source_cap, source_receipt) = borrow_gate_owner_cap(
+        fta,
+        source_gate,
+        source_gate_owner_cap,
+        ctx,
+    );
+    let (dest_cap, dest_receipt) = borrow_gate_owner_cap(
+        fta,
+        destination_gate,
+        destination_gate_owner_cap,
+        ctx,
+    );
+    // Issue the permit
+    jump::issue_jump_permit(
+        &fta.gate_registry,
+        &fta.network_node_registry,
+        &mut fta.jump_history,
+        &mut fta.blacklist,
+        fta.bounty_board.bounty_balance_mut(),
+        &mut fta.developer_balance,
+        character,
+        quote,
+        source_gate,
+        &source_cap,
+        source_network_node,
+        destination_gate,
+        &dest_cap,
+        destination_network_node,
+        payment,
+        energy_config,
+        clock,
+        ctx,
+    );
+    // Return the owner caps
+    return_owner_cap(fta, source_cap, source_receipt, ctx);
+    return_owner_cap(fta, dest_cap, dest_receipt, ctx);
+}
+
+/// Adds a jump to the jump history
+public(package) fun jump_history_add(
+    fta: &mut FrontierTransitAuthority,
+    quote: JumpQuote,
+    character_id: ID,
+    permit_id: ID,
+    ctx: &mut TxContext,
+) {
+    fta.jump_history.add(&mut fta.blacklist, quote, character_id, permit_id, ctx);
 }
 
 //=================================

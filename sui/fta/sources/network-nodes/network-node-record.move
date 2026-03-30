@@ -30,7 +30,6 @@ public(package) fun new(
     network_node_id: ID,
     jump_fee: u64,
     fee_recipient: address,
-    clock: &Clock,
     ctx: &mut TxContext,
 ): NetworkNodeRecord {
     // Create a management cap for this network node
@@ -47,7 +46,7 @@ public(package) fun new(
         transferred_from_wallet_addr: transferred_from_wallet_addr,
         network_node_id: network_node_id,
         fee_recipient: fee_recipient,
-        fee_history: fee_history::new(jump_fee, clock, ctx),
+        fee_history: fee_history::new(jump_fee, transferred_on, ctx),
         online_performance: online_performance,
         online_performance_avg: online_performance_avg,
     };

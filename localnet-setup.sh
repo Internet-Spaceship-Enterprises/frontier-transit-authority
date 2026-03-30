@@ -159,7 +159,7 @@ eve_currency_object_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK
 
 # Set the delay to 0 since we're just using localnet
 # This makes the deployment WAY faster
-DELAY_SECONDS=0 pnpm create-test-resources $NETWORK
+DELAY_SECONDS=10 pnpm create-test-resources $NETWORK
 
 # Update the .env files with the package IDs
 world_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/extracted-object-ids.json | jq -r ".world.packageId")

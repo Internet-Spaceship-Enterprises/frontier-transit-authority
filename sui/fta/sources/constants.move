@@ -10,6 +10,8 @@ const BOUNTY_FEE: u64 = 20;
 /// fund gas fees and to encourage additional development.
 const DEVELOPER_FEE: u64 = 10;
 
+/// The validity duration for a jump permit quote, in milliseconds
+const JUMP_QUOTE_VALIDITY_MS: u64 = 5 * 60 * 1000; // 5 minutes
 /// The base validity duration (in milliseconds) for a jump permit
 const JUMP_BASE_VALIDITY_DURATION: u64 = 2 * 60 * 1000; // 2 minutes
 /// The maximum validity duration (in milliseconds) for a jump permit
@@ -49,6 +51,10 @@ public(package) fun bounty_fee(): u64 {
 
 public(package) fun developer_fee(): u64 {
     DEVELOPER_FEE
+}
+
+public(package) fun jump_quote_validity_ms(): u64 {
+    JUMP_QUOTE_VALIDITY_MS
 }
 
 public(package) fun jump_base_validity_duration(): u64 {

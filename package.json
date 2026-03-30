@@ -8,6 +8,7 @@
         "transfer-gates": "tsx sui/fta/ts-scripts/transfer-gates.ts",
         "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts",
         "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts",
+        "datetime": "tsx sui/fta/ts-scripts/datetime.ts",
         "publish": "tsx sui/fta/ts-scripts/publish.ts"
     },
     "dependencies": {

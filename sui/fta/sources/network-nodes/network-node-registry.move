@@ -1,7 +1,10 @@
 module fta::network_node_registry;
 
-use fta::network_node_record::NetworkNodeRecord;
+use fta::network_node_record::{Self, NetworkNodeRecord};
+use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
+use world::access::OwnerCap;
+use world::character::Character;
 use world::gate::Gate;
 use world::network_node::NetworkNode;
 
@@ -14,6 +17,9 @@ const ENetworkNodeNotRegistered: vector<u8> =
 #[error(code = 3)]
 const EGateHasNoNetworkNode: vector<u8> =
     b"The gate does not have a network node (it may have been destroyed)";
+#[error(code = 2)]
+const ENetworkNodeOwnerCapMismatch: vector<u8> =
+    b"OwnerCap<NetworkNode> does not belong to this NetworkNode";
 
 public struct NetworkNodeRegistry has store {
     // Maps network node ID to network node record
@@ -24,6 +30,42 @@ public(package) fun new(ctx: &mut TxContext): NetworkNodeRegistry {
     NetworkNodeRegistry {
         table: linked_table::new<ID, NetworkNodeRecord>(ctx),
     }
+}
+
+/// Registers a network node to be used in FTA operations.
+/// For now, it does not actually transfer ownership, it just tracks the fees associated with using it.
+public(package) fun register(
+    network_node_registry: &mut NetworkNodeRegistry,
+    current_owner: &Character,
+    network_node: &NetworkNode,
+    network_node_owner_cap: &OwnerCap<NetworkNode>,
+    jump_fee: u64,
+    fee_recipient: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    // If it's already registered, bail out
+    assert!(!network_node_registry.registered(network_node), ENetworkNodeAlreadyRegistered);
+    // Ensure the network node owner cap provided is the right one for the network node
+    assert!(
+        network_node_owner_cap.is_authorized(object::id(network_node)),
+        ENetworkNodeOwnerCapMismatch,
+    );
+    assert!(
+        network_node.owner_cap_id() == object::id(network_node_owner_cap),
+        ENetworkNodeOwnerCapMismatch,
+    );
+    network_node_registry.add(
+        network_node_record::new(
+            clock.timestamp_ms(),
+            object::id(current_owner),
+            ctx.sender(),
+            object::id(network_node),
+            jump_fee,
+            fee_recipient,
+            ctx,
+        ),
+    );
 }
 
 public(package) fun registered(registry: &NetworkNodeRegistry, node: &NetworkNode): bool {

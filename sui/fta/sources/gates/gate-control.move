@@ -1,8 +1,7 @@
 module fta::gate_control;
 
-use fta::access;
-use fta::fta::FrontierTransitAuthority;
-use sui::transfer::Receiving;
+use fta::gate_registry::GateRegistry;
+use fta::network_node_registry::NetworkNodeRegistry;
 use world::access::OwnerCap;
 use world::energy::EnergyConfig;
 use world::gate::Gate;
@@ -19,33 +18,26 @@ const ENetworkNodeNotRegistered: vector<u8> =
 
 /// Onlines or Offlines an FTA gate if it's not already online
 public(package) fun change_gate_online(
-    fta: &mut FrontierTransitAuthority,
+    gate_registry: &GateRegistry,
+    network_node_registry: &NetworkNodeRegistry,
     gate: &mut Gate,
-    gate_owner_cap_ticket: Receiving<OwnerCap<Gate>>,
+    gate_owner_cap: &OwnerCap<Gate>,
     network_node: &mut NetworkNode,
     online: bool,
     energy_config: &EnergyConfig,
-    ctx: &TxContext,
 ) {
-    assert!(fta.gate_registry().registered(gate), EGateNotInNetwork);
+    assert!(gate_registry.registered(gate), EGateNotInNetwork);
     assert!(gate.energy_source_id().is_some(), EGateHasNoNetworkNode);
     assert!(
-        fta.network_node_registry().registered_by_id(*gate.energy_source_id().borrow()),
+        network_node_registry.registered_by_id(*gate.energy_source_id().borrow()),
         ENetworkNodeNotRegistered,
     );
     if (gate.is_online() != online) {
-        let (gate_owner_cap, receipt) = access::borrow_gate_owner_cap(
-            fta,
-            gate,
-            gate_owner_cap_ticket,
-            ctx,
-        );
         if (online) {
-            gate.online(network_node, energy_config, &gate_owner_cap);
+            gate.online(network_node, energy_config, gate_owner_cap);
         } else {
-            gate.offline(network_node, energy_config, &gate_owner_cap);
+            gate.offline(network_node, energy_config, gate_owner_cap);
         };
-        access::return_owner_cap(fta, gate_owner_cap, receipt, ctx);
     }
 }
 

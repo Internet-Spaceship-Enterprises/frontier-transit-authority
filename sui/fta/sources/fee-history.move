@@ -30,14 +30,18 @@ public struct FeeHistory has store {
     history: LinkedTable<u64, Fee>,
 }
 
-public(package) fun new(intial_jump_fee: u64, clock: &Clock, ctx: &mut TxContext): FeeHistory {
+public(package) fun new(
+    intial_jump_fee: u64,
+    created_timestamp: u64,
+    ctx: &mut TxContext,
+): FeeHistory {
     let mut tab = linked_table::new<u64, Fee>(ctx);
     tab.push_back(
-        clock.timestamp_ms(),
+        created_timestamp,
         Fee {
             jump_fee: intial_jump_fee,
-            takes_effect_on: clock.timestamp_ms(),
-            submitted_on: clock.timestamp_ms(),
+            takes_effect_on: created_timestamp,
+            submitted_on: created_timestamp,
         },
     );
     FeeHistory {
