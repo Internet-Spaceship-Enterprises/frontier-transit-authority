@@ -27,6 +27,12 @@ const BLACKLIST_PENALTY_AVERAGE_PERIOD: u64 = 30*24*60*60*1000; // Average over 
 /// The default average jump fee to use for calculating killmail penalties if there isn't enough historical data to calculate an average
 const BLACKLIST_DEFAULT_AVG_JUMP_FEE: u64 = 1000;
 
+/// How long, in milliseconds, an upgrade vote is valid for
+const UPGRADE_VOTE_VALIDITY_DURATION: u64 = 7 * 24 * 60 * 60 * 1000; // 7 days
+/// How long, in milliseconds, to consider for tallying a character's vote weight for an upgrade proposal
+/// (i.e. how far back in time to look at their jump history to calculate their vote weight)
+const UPGRADE_VOTE_WEIGHT_DURATION: u64 = 60 * 24 * 60 * 60 * 1000; // 60 days
+
 public(package) fun bounty_fee(): u64 {
     BOUNTY_FEE
 }
@@ -61,4 +67,12 @@ public(package) fun blacklist_penalty_average_period(): u64 {
 
 public(package) fun blacklist_default_avg_jump_fee(): u64 {
     BLACKLIST_DEFAULT_AVG_JUMP_FEE
+}
+
+public(package) fun upgrade_vote_validity_duration(): u64 {
+    UPGRADE_VOTE_VALIDITY_DURATION
+}
+
+public(package) fun upgrade_vote_weight_duration(): u64 {
+    UPGRADE_VOTE_WEIGHT_DURATION
 }

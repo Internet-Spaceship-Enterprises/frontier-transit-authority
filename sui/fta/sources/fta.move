@@ -11,9 +11,11 @@ use fta::jump_estimate::JumpEstimate;
 use fta::jump_history::{Self, JumpHistory};
 use fta::killmail_registry::{Self, KillmailRegistry};
 use fta::network_node_registry::{Self, NetworkNodeRegistry};
+use fta::upgrades::{Self, UpgradeCap, UpgradeManager};
 use sui::balance::{Self, Balance};
 use sui::clock::Clock;
-use sui::package::Publisher;
+use sui::package::{Self, Publisher};
+use world::character::Character;
 use world::gate::Gate;
 use world::killmail::Killmail;
 use world::object_registry::ObjectRegistry;
@@ -32,13 +34,11 @@ const EGateNetworkNodeNotRegistered: vector<u8> =
 /// The OTW for the module.
 public struct FTA has drop {}
 
-/// Developer capability
-public struct DeveloperCap has key { id: UID }
-
 public struct FrontierTransitAuthority has key {
     // TODO: swap fields to dynamic fields for upgradability
     id: UID,
     deployer_addr: address,
+    upgrade_manager: UpgradeManager,
     gate_registry: GateRegistry,
     jump_history: JumpHistory,
     network_node_registry: NetworkNodeRegistry,
@@ -59,17 +59,10 @@ fun init(otw: FTA, ctx: &mut TxContext) {
     // Transfer it to the publisher address
     transfer::public_transfer(publisher, ctx.sender());
 
-    // Transfers the DeveloperCap to the sender (publisher).
-    transfer::transfer(
-        DeveloperCap {
-            id: object::new(ctx),
-        },
-        ctx.sender(),
-    );
-
     let fta = FrontierTransitAuthority {
         id: object::new(ctx),
         deployer_addr: ctx.sender(),
+        upgrade_manager: upgrades::new_upgrade_manager(),
         gate_registry: gate_registry::new(ctx),
         network_node_registry: network_node_registry::new(ctx),
         jump_history: jump_history::new(ctx),
@@ -79,9 +72,23 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         developer_balance: balance::zero(),
     };
 
-    // Create the Transit Authority object and make it shared
-    // TODO: should this use a OTW?
+    // Send the FTA to the publisher address so they can use it
+    // in the publish transaction to create the custom upgrade capability.
+    transfer::transfer(fta, ctx.sender());
+}
+
+/// Exchange the default UpgradeCap for a custom one with much stricter permissions.
+#[allow(lint(share_owned))]
+public fun exchange_upgrade_cap(
+    fta: FrontierTransitAuthority,
+    original_upgrade_cap: package::UpgradeCap,
+    ctx: &mut TxContext,
+): UpgradeCap {
+    // Only once the upgrade cap is exchanged should the FTA be shared with the world,
+    // to prevent any funny business by the developers.
     transfer::share_object(fta);
+    // Exchange the upgrade cap and return it
+    upgrades::new_upgrade_cap(original_upgrade_cap, ctx)
 }
 
 public(package) fun uid(fta: &FrontierTransitAuthority): &UID {
@@ -203,4 +210,64 @@ public(package) fun jump_history_add(
     ctx: &mut TxContext,
 ) {
     fta.jump_history.add(&mut fta.blacklist, estimate, character_id, ctx);
+}
+
+//=================================
+// Upgrade operations
+//=================================
+
+/// Propose a new package upgrade.
+/// Only the developers (holders of the modified UpgradeCap) can call this function.
+public(package) fun propose(
+    fta: &mut FrontierTransitAuthority,
+    _: &UpgradeCap,
+    digest: vector<u8>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    fta.upgrade_manager.propose(digest, clock, ctx);
+}
+
+/// Clears the current upgrade proposal
+public(package) fun clear_proposal(fta: &mut FrontierTransitAuthority, _: &UpgradeCap) {
+    fta.upgrade_manager.clear_proposal();
+}
+
+/// Vote on a proposal
+public(package) fun vote(
+    fta: &mut FrontierTransitAuthority,
+    character: &Character,
+    in_favour: bool,
+    jump_history: &mut JumpHistory,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    fta
+        .upgrade_manager
+        .vote(
+            character,
+            in_favour,
+            jump_history,
+            clock,
+            ctx,
+        );
+}
+
+/// Clears a failed proposal after voting has concluded and the result has been determined to be a failure
+public(package) fun clear_failed_proposal(
+    fta: &mut FrontierTransitAuthority,
+    _: &UpgradeCap,
+    clock: &Clock,
+) {
+    fta.upgrade_manager.clear_failed_proposal(clock);
+}
+
+/// Checks the voting on a proposal to authorize the upgrade if it has passed
+public(package) fun authorize_upgrade(
+    fta: &mut FrontierTransitAuthority,
+    cap: &mut UpgradeCap,
+    digest: vector<u8>,
+    clock: &Clock,
+): package::UpgradeTicket {
+    fta.upgrade_manager.authorize_upgrade(cap, digest, clock)
 }

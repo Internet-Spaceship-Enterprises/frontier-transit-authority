@@ -1,10 +1,11 @@
 module fta::registration;
 
 use fta::access;
-use fta::fta::{FrontierTransitAuthority, DeveloperCap};
+use fta::fta::FrontierTransitAuthority;
 use fta::gate_record;
 use fta::jump::JumpAuth;
 use fta::network_node_record;
+use fta::upgrades::UpgradeCap;
 use sui::clock::Clock;
 use sui::transfer::Receiving;
 use world::access::{OwnerCap, ReturnOwnerCapReceipt};
@@ -398,7 +399,7 @@ fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut Tx
 /// TODO: change this to a private function without the DevCap
 public fun return_gate_to_owner(
     fta: &mut FrontierTransitAuthority,
-    _: &DeveloperCap,
+    _: &UpgradeCap,
     gate: &mut Gate,
     owner_cap_ticket: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
