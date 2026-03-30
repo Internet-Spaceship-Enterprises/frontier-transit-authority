@@ -4,7 +4,9 @@
     "type": "module",
     "description": "The Frontier Gate Network",
     "scripts": {
-        "transfer-gate": "tsx sui/fta/ts-scripts/transfer-gate.ts"
+        "set-owner-character": "tsx sui/fta/ts-scripts/set-owner-character.ts",
+        "transfer-gates": "tsx sui/fta/ts-scripts/transfer-gates.ts",
+        "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts"
     },
     "dependencies": {
         "@mysten/bcs": "^2.0.2",

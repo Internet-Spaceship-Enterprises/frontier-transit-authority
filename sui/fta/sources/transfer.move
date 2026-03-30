@@ -1,8 +1,10 @@
 module fta::transfer;
 
-use fta::fta::FrontierTransitAuthority;
+use fta::access;
+use fta::fta::{FrontierTransitAuthority, DeveloperCap};
 use fta::gate_record;
 use sui::clock::Clock;
+use sui::transfer::Receiving;
 use world::access::{OwnerCap, ReturnOwnerCapReceipt};
 use world::character::Character;
 use world::energy::EnergyConfig;
@@ -17,160 +19,79 @@ const ENetworkNodeOwnerCapMismatch: vector<u8> =
 #[error(code = 2)]
 const EGatesNotLinked: vector<u8> = b"The two gates being transferred must be linked";
 #[error(code = 3)]
-const ETransferNetworkNodeAsWell: vector<u8> =
-    b"If the gate is connected to a network node that is not already owned by FTA, then it must be provided (use the `transfer_gate_and_network_node` function)";
+const EWrongNetworkNode: vector<u8> =
+    b"The NetworkNode provided is not the correct one for this Gate";
 #[error(code = 4)]
-const ENoNetworkNodeProvided: vector<u8> =
-    b"If the gate is connected to a network node, then the network node must be provided";
+const ENoNetworkNodeOwnerCapProvided: vector<u8> =
+    b"If the gate is connected to a network node that is not already owned by FTA, then the network node's OwnerCap and Receipt must be provided";
+#[error(code = 5)]
+const EGateHasNoNetworkNode: vector<u8> =
+    b"A gate cannot be transferred to FTA if it is not connected to a network node";
+#[error(code = 6)]
+const EDifferentNetworkNodes: vector<u8> =
+    b"If using the `transfer_gate_pair_same_network_node` function, both gates must be linked to the same network node";
 
-public struct GateTransferReceipt {
-    gate_id: ID,
-    gate_owner_cap_id: ID,
-    network_node_id: Option<ID>,
-    network_node_owner_cap_id: Option<ID>,
-}
-
-public fun transfer_gate_and_network_node(
-    gate_network: &mut FrontierTransitAuthority,
-    gate_a_receipt_opt: &Option<GateTransferReceipt>,
-    current_owner: &mut Character,
-    gate: &mut Gate,
-    gate_owner_cap: OwnerCap<Gate>,
-    gate_owner_cap_receipt: ReturnOwnerCapReceipt,
-    network_node: &mut NetworkNode,
-    network_node_owner_cap: OwnerCap<NetworkNode>,
-    network_node_owner_cap_receipt: ReturnOwnerCapReceipt,
-    jump_fee: u64,
-    energy_config: &EnergyConfig,
-    clock: &Clock,
-    ctx: &mut TxContext,
-): Option<GateTransferReceipt> {
-    let nn_id = object::id(network_node);
-    let nn_owner_cap_id = object::id(&network_node_owner_cap);
-    // Run some access checks to ensure this is the right owner cap for this network node
-    assert!(network_node_owner_cap.is_authorized(nn_id), ENetworkNodeOwnerCapMismatch);
-    assert!(network_node.owner_cap_id() == nn_owner_cap_id, ENetworkNodeOwnerCapMismatch);
-
-    // If the gate is connected to a network node and is online, offline it
-    if (gate.is_online()) {
-        gate.offline(network_node, energy_config, &gate_owner_cap);
-    };
-
-    // Do the gate transfer
-    let res = transfer_gate(
-        gate_network,
-        gate_a_receipt_opt,
-        current_owner,
-        gate,
-        gate_owner_cap,
-        gate_owner_cap_receipt,
-        option::some(nn_id),
-        option::some(nn_owner_cap_id),
-        jump_fee,
-        clock,
-        ctx,
+fun transfer_gate_pair_validation(gate_1: &Gate, gate_2: &Gate) {
+    // Ensure the gates are bi-directionally linked
+    assert!(
+        gate_1.linked_gate_id().is_some() && gate_1.linked_gate_id().borrow() == object::id(gate_2),
+        EGatesNotLinked,
+    );
+    assert!(
+        gate_2.linked_gate_id().is_some() && gate_2.linked_gate_id().borrow() == object::id(gate_1),
+        EGatesNotLinked,
     );
 
-    // Transfer the network node ownership to FTA
-    network_node_owner_cap.transfer_owner_cap_with_receipt(
-        network_node_owner_cap_receipt,
-        object::id_address(gate_network),
-        ctx,
+    // Ensure the gates both have a network node
+    assert!(
+        gate_1.energy_source_id().is_some() && gate_2.energy_source_id().is_some(),
+        EGateHasNoNetworkNode,
     );
-
-    // Put the record in the table
-    gate_network.add_network_node_record(
-        fta::network_node_record::new(
-            clock.timestamp_ms(),
-            object::id(current_owner),
-            ctx.sender(),
-            object::id(network_node),
-            nn_owner_cap_id,
-        ),
-    );
-
-    // Return the result of the transfer
-    res
-}
-
-public fun transfer_gate_only(
-    gate_network: &mut FrontierTransitAuthority,
-    gate_receipt_opt: &Option<GateTransferReceipt>,
-    current_owner: &mut Character,
-    gate: &mut Gate,
-    gate_owner_cap: OwnerCap<Gate>,
-    gate_owner_cap_receipt: ReturnOwnerCapReceipt,
-    network_node: &mut Option<NetworkNode>,
-    jump_fee: u64,
-    energy_config: &EnergyConfig,
-    clock: &Clock,
-    ctx: &mut TxContext,
-): Option<GateTransferReceipt> {
-    let mut network_node_id_opt = option::none<ID>();
-    let mut network_node_owner_cap_id_opt = option::none<ID>();
-    let energy_source_id = gate.energy_source_id();
-    if (energy_source_id.is_some()) {
-        let network_node_id = *energy_source_id.borrow();
-        // If the gate is connected to a network node, assert that we already own it.
-        // Otherwise, they need to call the function that transfers NetworkNode ownership as well.
-        assert!(
-            gate_network.network_node_table().contains(network_node_id),
-            ETransferNetworkNodeAsWell,
-        );
-        // If the gate is connected to a network node, assert that a NetworkNode object was provided
-        assert!(network_node.is_some(), ENoNetworkNodeProvided);
-
-        network_node_id_opt = option::some(network_node_id);
-        network_node_owner_cap_id_opt =
-            option::some(
-                *gate_network
-                    .network_node_table()
-                    .borrow(network_node_id)
-                    .network_node_owner_cap_id(),
-            );
-
-        // If the gate is connected to a network node and is online, offline it
-        if (gate.is_online()) {
-            gate.offline(network_node.borrow_mut(), energy_config, &gate_owner_cap);
-        };
-    };
-
-    transfer_gate(
-        gate_network,
-        gate_receipt_opt,
-        current_owner,
-        gate,
-        gate_owner_cap,
-        gate_owner_cap_receipt,
-        network_node_id_opt,
-        network_node_owner_cap_id_opt,
-        jump_fee,
-        clock,
-        ctx,
-    )
 }
 
 fun transfer_gate(
-    gate_network: &mut FrontierTransitAuthority,
-    gate_a_receipt_opt: &Option<GateTransferReceipt>,
+    fta: &mut FrontierTransitAuthority,
     current_owner: &Character,
     gate: &mut Gate,
     gate_owner_cap: OwnerCap<Gate>,
     gate_owner_cap_receipt: ReturnOwnerCapReceipt,
-    network_node_id: Option<ID>,
-    network_node_owner_cap_id: Option<ID>,
+    network_node: &mut NetworkNode,
+    network_node_owner_cap: &Option<OwnerCap<NetworkNode>>,
+    network_node_owner_cap_receipt: &Option<ReturnOwnerCapReceipt>,
     jump_fee: u64,
+    energy_config: &EnergyConfig,
     clock: &Clock,
     ctx: &mut TxContext,
-): Option<GateTransferReceipt> {
+) {
+    // Ensure the correct network node was provided
+    assert!(gate.energy_source_id().borrow() == object::id(network_node), EWrongNetworkNode);
+
+    // Ensure the gate owner cap provided is the right one for the gate
+    assert!(gate_owner_cap.is_authorized(object::id(gate)), EGateOwnerCapMismatch);
+    assert!(gate.owner_cap_id() == object::id(&gate_owner_cap), EGateOwnerCapMismatch);
+
     // Ensure the gate is linked, since we can't link it after it's been transferred
     assert!(!gate.linked_gate_id().is_none(), EGatesNotLinked);
 
-    let gate_id = object::id(gate);
-    let gate_owner_cap_id = object::id(&gate_owner_cap);
-    // Run some access checks to ensure this is the right owner cap for this gate
-    assert!(gate_owner_cap.is_authorized(gate_id), EGateOwnerCapMismatch);
-    assert!(gate.owner_cap_id() == gate_owner_cap_id, EGateOwnerCapMismatch);
+    // Ensure that either the owner cap was provided or we already own it
+    assert!(
+        fta.gate_network_node_registered(gate) || (network_node_owner_cap.is_some() && network_node_owner_cap_receipt.is_some()),
+        ENoNetworkNodeOwnerCapProvided,
+    );
+    // Ensure the network node owner cap provided is the right one for the network node
+    assert!(
+        network_node_owner_cap.is_none() || network_node_owner_cap.borrow().is_authorized(object::id(network_node)),
+        ENetworkNodeOwnerCapMismatch,
+    );
+    assert!(
+        network_node_owner_cap.is_none() || network_node.owner_cap_id() == object::id(network_node_owner_cap.borrow()),
+        EGateOwnerCapMismatch,
+    );
+
+    // Offline the gate if it has a network node
+    if (gate.is_online()) {
+        gate.offline(network_node, energy_config, &gate_owner_cap);
+    };
 
     // Use the borrowed owner cap to prepare the gate
     prepare_gate(
@@ -182,7 +103,7 @@ fun transfer_gate(
     // Transfer the gate ownership to FTA
     gate_owner_cap.transfer_owner_cap_with_receipt(
         gate_owner_cap_receipt,
-        object::id_address(gate_network),
+        fta.get_owner_character().to_address(),
         ctx,
     );
 
@@ -192,42 +113,166 @@ fun transfer_gate(
         object::id(current_owner),
         ctx.sender(),
         // Gate B values are from this call
-        gate_id,
-        gate_owner_cap_id,
-        network_node_id,
-        network_node_owner_cap_id,
+        object::id(gate),
         jump_fee,
         clock,
         ctx,
     );
     // Put the record in the table using a unique hash for the pair
-    gate_network.add_gate_record(record);
+    fta.add_gate_record(record);
+}
 
-    // Check if this is the second transfer
-    if (gate_a_receipt_opt.is_some()) {
-        let gate_a_receipt = gate_a_receipt_opt.borrow();
-        let linked_gate_id_opt = gate.linked_gate_id();
-        assert!(
-            linked_gate_id_opt.is_some() && linked_gate_id_opt.borrow() == gate_a_receipt.gate_id,
-            EGatesNotLinked,
-        );
+public fun transfer_gate_pair_same_network_node(
+    fta: &mut FrontierTransitAuthority,
+    current_owner: &Character,
+    gate_1: &mut Gate,
+    gate_1_owner_cap: OwnerCap<Gate>,
+    gate_1_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node: &mut NetworkNode,
+    network_node_owner_cap: Option<OwnerCap<NetworkNode>>,
+    network_node_owner_cap_receipt: Option<ReturnOwnerCapReceipt>,
+    jump_fee_1: u64,
+    gate_2: &mut Gate,
+    gate_2_owner_cap: OwnerCap<Gate>,
+    gate_2_owner_cap_receipt: ReturnOwnerCapReceipt,
+    jump_fee_2: u64,
+    energy_config: &EnergyConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    transfer_gate_pair_validation(gate_1, gate_2);
 
-        // Consume the receipt
-        let _ = gate_a_receipt;
+    // This function can only be used if both gates share the same network node
+    assert!(
+        gate_1.energy_source_id().borrow() == gate_2.energy_source_id().borrow(),
+        EDifferentNetworkNodes,
+    );
 
-        // If a receipt was passed in, then this is the second transfer of two,
-        // so do not return a receipt.
-        option::none()
+    transfer_gate(
+        fta,
+        current_owner,
+        gate_1,
+        gate_1_owner_cap,
+        gate_1_owner_cap_receipt,
+        network_node,
+        &network_node_owner_cap,
+        &network_node_owner_cap_receipt,
+        jump_fee_1,
+        energy_config,
+        clock,
+        ctx,
+    );
+
+    transfer_gate(
+        fta,
+        current_owner,
+        gate_2,
+        gate_2_owner_cap,
+        gate_2_owner_cap_receipt,
+        network_node,
+        &network_node_owner_cap,
+        &network_node_owner_cap_receipt,
+        jump_fee_2,
+        energy_config,
+        clock,
+        ctx,
+    );
+
+    // Transfer the network node for gate 1, if it isn't already owned
+    if (!fta.gate_network_node_registered(gate_1)) {
+        network_node_owner_cap
+            .destroy_some()
+            .transfer_owner_cap_with_receipt(
+                network_node_owner_cap_receipt.destroy_some(),
+                fta.get_owner_character().to_address(),
+                ctx,
+            );
     } else {
-        // If no receipt was passed in, then this is the first transfer of two,
-        // so return the receipt that must be consumed.
-        option::some(GateTransferReceipt {
-            gate_id: gate_id,
-            gate_owner_cap_id: gate_owner_cap_id,
-            network_node_id: network_node_id,
-            network_node_owner_cap_id,
-        })
-    }
+        network_node_owner_cap.destroy_none();
+        network_node_owner_cap_receipt.destroy_none();
+    };
+}
+
+public fun transfer_gate_pair(
+    fta: &mut FrontierTransitAuthority,
+    current_owner: &Character,
+    gate_1: &mut Gate,
+    gate_1_owner_cap: OwnerCap<Gate>,
+    gate_1_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node_1: &mut NetworkNode,
+    network_node_owner_cap_1: Option<OwnerCap<NetworkNode>>,
+    network_node_owner_cap_receipt_1: Option<ReturnOwnerCapReceipt>,
+    jump_fee_1: u64,
+    gate_2: &mut Gate,
+    gate_2_owner_cap: OwnerCap<Gate>,
+    gate_2_owner_cap_receipt: ReturnOwnerCapReceipt,
+    network_node_2: &mut NetworkNode,
+    network_node_owner_cap_2: Option<OwnerCap<NetworkNode>>,
+    network_node_owner_cap_receipt_2: Option<ReturnOwnerCapReceipt>,
+    jump_fee_2: u64,
+    energy_config: &EnergyConfig,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    transfer_gate_pair_validation(gate_1, gate_2);
+
+    transfer_gate(
+        fta,
+        current_owner,
+        gate_1,
+        gate_1_owner_cap,
+        gate_1_owner_cap_receipt,
+        network_node_1,
+        &network_node_owner_cap_1,
+        &network_node_owner_cap_receipt_1,
+        jump_fee_1,
+        energy_config,
+        clock,
+        ctx,
+    );
+
+    transfer_gate(
+        fta,
+        current_owner,
+        gate_2,
+        gate_2_owner_cap,
+        gate_2_owner_cap_receipt,
+        network_node_2,
+        &network_node_owner_cap_2,
+        &network_node_owner_cap_receipt_2,
+        jump_fee_2,
+        energy_config,
+        clock,
+        ctx,
+    );
+
+    // Transfer the network node for gate 1, if it isn't already owned
+    if (!fta.gate_network_node_registered(gate_1)) {
+        network_node_owner_cap_1
+            .destroy_some()
+            .transfer_owner_cap_with_receipt(
+                network_node_owner_cap_receipt_1.destroy_some(),
+                fta.get_owner_character().to_address(),
+                ctx,
+            );
+    } else {
+        network_node_owner_cap_1.destroy_none();
+        network_node_owner_cap_receipt_1.destroy_none();
+    };
+
+    // Transfer the network node for gate 2, if it isn't already owned
+    if (!fta.gate_network_node_registered(gate_2)) {
+        network_node_owner_cap_2
+            .destroy_some()
+            .transfer_owner_cap_with_receipt(
+                network_node_owner_cap_receipt_2.destroy_some(),
+                fta.get_owner_character().to_address(),
+                ctx,
+            );
+    } else {
+        network_node_owner_cap_2.destroy_none();
+        network_node_owner_cap_receipt_2.destroy_none();
+    };
 }
 
 /// Prepares a gate for FTA operation
@@ -235,4 +280,23 @@ fun prepare_gate(gate: &mut Gate, gate_owner_cap: &OwnerCap<Gate>, _ctx: &mut Tx
     // TODO: set metadata name using the system/location
     gate.update_metadata_name(gate_owner_cap, b"Frontier Transit Authority".to_string());
     // TODO: configure the authorization extension
+}
+
+// Transfers a gate back to its original owner
+public fun return_gate_to_owner(
+    fta: &mut FrontierTransitAuthority,
+    _: &DeveloperCap,
+    character: &mut Character,
+    gate: &Gate,
+    cap_ticket: Receiving<OwnerCap<Gate>>,
+    ctx: &mut TxContext,
+) {
+    // Get the owner cap from FTA
+    let (cap, receipt) = access::borrow_gate_owner_cap(fta, character, gate, cap_ticket, ctx);
+    // Transfer it to the original owner
+    cap.transfer_owner_cap_with_receipt(
+        receipt,
+        fta.get_gate_record(gate, ctx).transferred_from_character_id().to_address(),
+        ctx,
+    );
 }

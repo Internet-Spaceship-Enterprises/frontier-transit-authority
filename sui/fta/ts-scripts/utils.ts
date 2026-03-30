@@ -4,7 +4,7 @@ import { getConfig, MODULES } from "../../../ts-scripts/utils/config";
 import { devInspectMoveCallFirstReturnValueBytes } from "../../../ts-scripts/utils/dev-inspect";
 import { FTA_PACKAGE_ID, FTA_OBJECT_ID } from "./config";
 
-export async function getNetworkNodeOwnerCap(
+export async function getNetworkNodeOwnerCapId(
     networkNodeId: string,
     client: SuiJsonRpcClient,
     config: ReturnType<typeof getConfig>,
@@ -42,13 +42,13 @@ export async function getGateOwnerCapId(
         });
 
         if (!bytes) {
-            console.warn("Error checking energy source id");
+            console.warn("Error checking gate owner cap ID");
             return null;
         }
 
         return bcs.Address.parse(bytes);
     } catch (error) {
-        console.warn("Failed to get energy source ID:", error instanceof Error ? error.message : error);
+        console.warn("Failed to get gate owner cap ID:", error instanceof Error ? error.message : error);
         return null;
     }
 }
@@ -71,7 +71,7 @@ export async function getEnergySourceId(
             return null;
         }
 
-        return bcs.Address.parse(bytes);
+        return bcs.option(bcs.Address).parse(bytes);
     } catch (error) {
         console.warn("Failed to get energy source ID:", error instanceof Error ? error.message : error);
         return null;

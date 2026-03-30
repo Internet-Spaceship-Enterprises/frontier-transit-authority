@@ -8,4 +8,4 @@ authors = ["Internet Spaceship Enterprises (admin@internet.spaceship.enterprises
 world = { local = "/frontier/world-contracts/contracts/world" }
 
 [environments]
-localnet = "6642ebb1"
+localnet = "c91de570"
