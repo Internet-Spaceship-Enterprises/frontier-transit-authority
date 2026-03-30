@@ -41,3 +41,5 @@ dist/
 .pnpm-store
 
 sui/fgn/Move.lock
+
+**/node_modules/**

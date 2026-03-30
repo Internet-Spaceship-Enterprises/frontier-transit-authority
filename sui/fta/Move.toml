@@ -4,9 +4,13 @@ edition = "2024"
 authors = ["Internet Spaceship Enterprises (admin@internet.spaceship.enterprises)"]
 
 [dependencies]
-#world = { git = "https://github.com/evefrontier/world-contracts.git", rev="v0.0.18", subdir = "contracts/world", published-at = "0x04105ef003421f3cd83dfee5bf23c9bf8eaa29fc8766c902ac93f14a9629c482", original-id = "0x04105ef003421f3cd83dfee5bf23c9bf8eaa29fc8766c902ac93f14a9629c482" }
 world = { local = "/frontier/world-contracts/contracts/world" }
 assets = { local = "/frontier/world-contracts/contracts/assets" }
 
+[dep-replacements.testnet_utopia]
+world = { git = "https://github.com/evefrontier/world-contracts.git", rev="v0.0.21", subdir = "contracts/world"}
+assets = { git = "https://github.com/evefrontier/world-contracts.git", rev="v0.0.21", subdir = "contracts/assets"}
+
 [environments]
-localnet = "463701bf"
+localnet = "04f9d670"
+testnet_utopia = "4c78adac"
