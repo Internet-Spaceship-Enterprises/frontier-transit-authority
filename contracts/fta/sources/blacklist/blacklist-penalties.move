@@ -62,6 +62,7 @@ public(package) fun new(): BlacklistPenalties {
     }
 }
 
+// TODO: switch this to a match instead of storing in a table
 public(package) fun get(penalties: &BlacklistPenalties, item_type: u64): Penalty {
     if (!penalties.penalties_by_type.contains(&item_type)) {
         return default()

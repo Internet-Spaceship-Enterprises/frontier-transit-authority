@@ -24,7 +24,11 @@ export async function registerGateTx(
         return;
     }
 
+    console.log("FTA_PUBLISHED_AT:", FTA_PUBLISHED_AT);
+
     const tx = new Transaction();
+    tx.setGasBudget(500_000_000);
+
     const [gate1OwnerCap, gate1OwnerReceipt] = tx.moveCall({
         target: `${getEveWorldPackageId()}::character::borrow_owner_cap`,
         typeArguments: [`${getEveWorldPackageId()}::gate::Gate`],
@@ -38,7 +42,7 @@ export async function registerGateTx(
 
     if (gate1.energySourceId == gate2.energySourceId) {
         tx.moveCall({
-            target: `${FTA_PUBLISHED_AT}::registration::transfer_gate_pair_same_network_node`,
+            target: `${FTA_PUBLISHED_AT}::fta::register_gate_pair_same_network_node`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -60,7 +64,7 @@ export async function registerGateTx(
         });
     } else {
         tx.moveCall({
-            target: `${FTA_PUBLISHED_AT}::registration::transfer_gate_pair`,
+            target: `${FTA_PUBLISHED_AT}::fta::register_gate_pair`,
             arguments: [
                 tx.object(FTA_OBJECT_ID),
                 tx.object(characterObjectId),
@@ -98,13 +102,16 @@ export async function registerGateTx(
             tx.object(gate2.id),
         ],
     });
-    console.log(`Transferred gates: \n\t${gate1.id}\n\t${gate2.id}`);
 
     try {
+        console.log("Here 9");
         const result = await dAppKit.signAndExecuteTransaction({ transaction: tx });
+        console.log("Here 10");
         if (result.FailedTransaction) {
+            console.log("Here 11");
             throw new Error(`Transaction failed: ${result.FailedTransaction.status.error?.message}`);
         }
+        console.log(`Transferred gates: \n\t${gate1.id}\n\t${gate2.id}`);
         console.log('Transaction digest:', result.Transaction.digest);
     } catch (error) {
         console.error('Transaction failed:', error);

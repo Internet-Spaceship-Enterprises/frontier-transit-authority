@@ -10,6 +10,7 @@ import {
 } from "@evefrontier/dapp-kit";
 import { GetOwnedAssembliesResponse, OwnedAssembliesNode } from "./types";
 import { worldOriginalPackageId } from "../utils";
+import { GetAssemblyByIdResponse } from "./types";
 
 export interface OwnedAssembliesByTypeResponse {
     assembly: AssemblyType<Assemblies>,
@@ -19,6 +20,50 @@ export interface OwnedAssembliesByTypeResponse {
         authorized_object_id: string,
     }
 };
+
+export async function getAssemblyById(assemblyId: string): Promise<AssemblyType<Assemblies> | null> {
+    const query = `
+  query GetAssemblyById($address: SuiAddress!){
+    object(address: $address) {
+        asMoveObject {
+            contents {
+                type {
+                    repr
+                }
+                json
+            }
+        }
+    }
+  }`
+
+    const result = await executeGraphQLQuery<GetAssemblyByIdResponse>(
+        query,
+        {
+            address: assemblyId,
+        },
+    );
+
+    const assembly = await transformToAssembly("", result.data?.object.asMoveObject!)!;
+
+    console.log(assembly);
+    return assembly;
+}
+
+export async function getGateById(gateId: string): Promise<AssemblyType<Assemblies.SmartGate> | null> {
+    const assembly = await getAssemblyById(gateId);
+    if (assembly?.type !== "SmartGate") {
+        throw new Error(`Object with ID ${gateId} is not a Smart Gate`);
+    }
+    return assembly as AssemblyType<Assemblies.SmartGate>;
+}
+
+export async function getNetworkNodeById(gateId: string): Promise<AssemblyType<Assemblies.NetworkNode> | null> {
+    const assembly = await getAssemblyById(gateId);
+    if (assembly?.type !== "NetworkNode") {
+        throw new Error(`Object with ID ${gateId} is not a Network Node`);
+    }
+    return assembly as AssemblyType<Assemblies.NetworkNode>;
+}
 
 export async function getOwnedAssembliesByType(playerProfileAddr: string, objectType: string): Promise<OwnedAssembliesByTypeResponse[]> {
     const query = `
@@ -73,7 +118,6 @@ export async function getOwnedAssembliesByType(playerProfileAddr: string, object
         assembly: (await transformToAssembly("", node.contents.extract.asAddress?.asObject?.asMoveObject!))!,
     }))!;
     const mapped = await Promise.all(promises);
-    console.log(mapped);
 
     return mapped;
 }

@@ -4,17 +4,17 @@ use fta::constants;
 use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
 
-#[error(code = 5)]
+#[error(code = 1)]
 const ENotEnoughNotice: vector<u8> =
     b"You have not provided enough notice for the fee change (takes_effect_on is too soon)";
-#[error(code = 6)]
+#[error(code = 2)]
 const EFeeChangePending: vector<u8> =
     b"You cannot schedule a fee change when there is already a fee change pending";
-#[error(code = 7)]
+#[error(code = 3)]
 const ENoFeeActive: vector<u8> = b"No jump fee is currently active";
-#[error(code = 8)]
+#[error(code = 4)]
 const EFeeIncreaseTooLarge: vector<u8> = b"This is too large of a fee increase";
-#[error(code = 11)]
+#[error(code = 5)]
 const ENoFeeChange: vector<u8> = b"The new fee is the same as the existing fee";
 
 public struct Fee has drop, store {

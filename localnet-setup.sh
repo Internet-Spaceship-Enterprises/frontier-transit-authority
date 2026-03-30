@@ -52,7 +52,7 @@ set -e
 
 chain_id=$(sui client chain-identifier)
 # Update this package's Move.toml file
-sed -i "/^\[environments\]/,/^\[/{s/^[[:space:]]*$NETWORK[[:space:]]*=.*/$NETWORK = \"$chain_id\"/}" "$SETUP_SCRIPT_DIR/sui/fta/Move.toml"
+sed -i "/^\[environments\]/,/^\[/{s/^[[:space:]]*$NETWORK[[:space:]]*=.*/$NETWORK = \"$chain_id\"/}" "$SETUP_SCRIPT_DIR/contracts/fta/Move.toml"
 
 # Ensure the correct network is selected
 sui client switch --env $NETWORK
@@ -181,7 +181,7 @@ cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"
 # Finalize the EVE currency
 pnpm tsx $WORKSPACE_DIR/world-contracts/ts-scripts/assets/finalize-eve-currency.ts
 # Transfer some to player A
-pnpm tsx $SETUP_SCRIPT_DIR/sui/fta/ts-scripts/transfer-eve.ts
+pnpm tsx $SETUP_SCRIPT_DIR/contracts/fta/ts-scripts/transfer-eve.ts
 
 # Copy over deployment artifacts
 cp -r "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK" "$WORKSPACE_DIR/builder-scaffold/deployments/"

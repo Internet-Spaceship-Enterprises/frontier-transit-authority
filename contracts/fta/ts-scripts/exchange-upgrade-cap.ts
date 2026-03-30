@@ -39,7 +39,7 @@ async function exchangeUpgradeCap(
     }
     const newCapId = createdCapChange!.objectId;
 
-    await appendFile('sui/fta/ts-scripts/config.ts', `\nexport const FTA_NEW_UPGRADE_CAP_ID = "${newCapId}";`, (err) => {
+    await appendFile('contracts/fta/ts-scripts/config.ts', `\nexport const FTA_NEW_UPGRADE_CAP_ID = "${newCapId}";`, (err) => {
         if (err) {
             console.error('Error appending to file:', err);
         }

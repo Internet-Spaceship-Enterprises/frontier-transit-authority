@@ -1,0 +1,11 @@
+/* Larger Radix tabs */
+.bigTabs {
+  font-size: 1.4rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+  --tab-height: 3.5rem;
+  --tab-padding-x: 0.75rem;
+  --tab-inner-padding-x: 1rem;
+  --tab-inner-padding-y: 0.5rem;
+  --tab-inner-border-radius: 0.625rem;
+}

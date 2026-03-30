@@ -14,7 +14,7 @@ export async function registerNetworkNodeTx(dAppKit: DAppKit<[], ClientWithCoreA
     });
 
     tx.moveCall({
-        target: `${FTA_PUBLISHED_AT}::registration::register_network_node`,
+        target: `${FTA_PUBLISHED_AT}::fta::register_network_node`,
         arguments: [
             tx.object(FTA_OBJECT_ID),
             tx.object(characterObjectId),

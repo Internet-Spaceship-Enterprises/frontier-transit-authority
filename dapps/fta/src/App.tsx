@@ -1,6 +1,6 @@
-import { Box, Container, Flex, Heading } from "@radix-ui/themes";
+import { Box, Container, Flex, Heading, Section } from "@radix-ui/themes";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
-import { NotConnected } from "./NotConnected";
+import { Disconnected } from "./Disconnected";
 import { Connected } from "./Connected";
 
 function App() {
@@ -10,22 +10,33 @@ function App() {
   const content = account?.address ? (
     <Connected />
   ) : (
-    <NotConnected />
+    <Disconnected />
   );
+
   return (
     <Flex
-      position="sticky"
-      px="4"
-      py="2"
-      direction="row"
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-      }}
+      direction={"column"}
+      justify={"center"}
+      align="center"
+      height="100vh"
     >
-      {content}
+      <Box>
+        <Flex justify={"center"}>
+          <img
+            src="/assets/logo.png"
+            alt="FTA Logo"
+            style={{
+              objectFit: "cover",
+              width: "50%",
+            }}
+          />
+        </Flex>
+        <Section size="1">
+          {content}
+        </Section>
+      </Box>
     </Flex>
-  )
+  );
 }
 
 export default App;

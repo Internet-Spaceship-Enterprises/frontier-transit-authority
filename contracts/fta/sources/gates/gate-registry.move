@@ -2,6 +2,7 @@ module fta::gate_registry;
 
 use fta::datetime;
 use fta::gate_record::{Self, GateRecord};
+use fta::greek;
 use fta::jump_auth::JumpAuth;
 use fta::management_cap::ManagementCap;
 use fta::network_node_registry::NetworkNodeRegistry;
@@ -139,7 +140,7 @@ fun transfer_gate(
     // Ensure that the associated network node is already registered
     assert!(network_node_registry.registered(network_node), ENetworkNodeNotRegistered);
 
-    // If the gate is offline, bring it online
+    // If the gate is currently offline, bring it online
     if (!gate.is_online()) {
         gate.online(network_node, energy_config, &gate_owner_cap);
     };
@@ -367,7 +368,15 @@ public(package) fun update_gate_metadata(
     let mut name = b"Frontier Transit Authority - ".to_string();
     name.append(std::u64::to_string(location.solarsystem()));
     name.append(b" ".to_string());
-    name.append(coords);
+
+    let hash = gate.location().hash();
+    let mut i = 0;
+    let mut sum = 0u64;
+    while (i < hash.length()) {
+        sum = sum + (*hash.borrow(i) as u64);
+        i = i + 1;
+    };
+    name.append(greek::lookup(sum % greek::max(3), 3));
 
     let mut description = b"Solar System: ".to_string();
     description.append(std::u64::to_string(location.solarsystem()));

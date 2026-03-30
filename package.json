@@ -4,17 +4,17 @@
     "type": "module",
     "description": "The Frontier Gate Network",
     "scripts": {
-        "set-owner-character": "tsx sui/fta/ts-scripts/set-owner-character.ts",
-        "transfer-gates": "tsx sui/fta/ts-scripts/transfer-gates.ts",
-        "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts",
-        "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts",
-        "datetime": "tsx sui/fta/ts-scripts/datetime.ts",
-        "publish": "tsx sui/fta/ts-scripts/publish.ts",
-        "exchange-upgrade-cap": "tsx sui/fta/ts-scripts/exchange-upgrade-cap.ts",
-        "jump-estimate": "tsx sui/fta/ts-scripts/jump-estimate.ts",
-        "jump-quote": "tsx sui/fta/ts-scripts/jump-quote.ts",
-        "jump-permit": "tsx sui/fta/ts-scripts/jump-permit.ts",
-        "transfer-eve": "tsx sui/fta/ts-scripts/transfer-eve.ts"
+        "set-owner-character": "tsx contracts/fta/ts-scripts/set-owner-character.ts",
+        "transfer-gates": "tsx contracts/fta/ts-scripts/transfer-gates.ts",
+        "return-gates": "tsx contracts/fta/ts-scripts/return-gates.ts",
+        "reveal-gates": "tsx contracts/fta/ts-scripts/reveal-gates.ts",
+        "datetime": "tsx contracts/fta/ts-scripts/datetime.ts",
+        "publish": "tsx contracts/fta/ts-scripts/publish.ts",
+        "exchange-upgrade-cap": "tsx contracts/fta/ts-scripts/exchange-upgrade-cap.ts",
+        "jump-estimate": "tsx contracts/fta/ts-scripts/jump-estimate.ts",
+        "jump-quote": "tsx contracts/fta/ts-scripts/jump-quote.ts",
+        "jump-permit": "tsx contracts/fta/ts-scripts/jump-permit.ts",
+        "transfer-eve": "tsx contracts/fta/ts-scripts/transfer-eve.ts"
     },
     "dependencies": {
         "@evefrontier/dapp-kit": "^0.1.7",

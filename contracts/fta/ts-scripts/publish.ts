@@ -5,23 +5,10 @@ import {
 	initializeContext,
 	requireEnv,
 } from "../../../ts-scripts/utils/helper";
-import { createClient } from "../../../ts-scripts/utils/client";
 import { writeFileSync } from 'node:fs';
 import { delay, getDelayMs } from "../../../ts-scripts/utils/delay";
+import { findCreatedObjectIdByTypeSuffix, SuiObjectChange, requireObjectChanges } from "../../../ts-scripts/utils/tx-parsing";
 import { execSync } from 'child_process';
-
-const tmpclient = createClient("testnet");
-type GetTxBlockResult = Awaited<ReturnType<typeof tmpclient.getTransactionBlock>>;
-type SuiObjectChange = NonNullable<GetTxBlockResult['objectChanges']>[number];
-
-function requireObjectChanges(
-	objectChanges: SuiObjectChange[] | undefined | null,
-): SuiObjectChange[] {
-	if (!objectChanges?.length) {
-		throw new Error('No objectChanges found on transaction result');
-	}
-	return objectChanges;
-}
 
 function findPublishedPackageId(objectChanges: SuiObjectChange[]): string {
 	const published = objectChanges.find(
@@ -34,32 +21,6 @@ function findPublishedPackageId(objectChanges: SuiObjectChange[]): string {
 	}
 
 	return published.packageId;
-}
-
-function findCreatedObjectIdByTypeSuffix(
-	objectChanges: SuiObjectChange[],
-	typeSuffix: string,
-): string {
-	const matches = objectChanges.filter(
-		(change): change is Extract<SuiObjectChange, { type: 'created' }> =>
-			change.type === 'created' &&
-			typeof change.objectType === 'string' &&
-			change.objectType.endsWith(typeSuffix),
-	);
-
-	if (matches.length === 0) {
-		throw new Error(
-			`Could not find a created object with type ending in "${typeSuffix}"`,
-		);
-	}
-
-	if (matches.length > 1) {
-		throw new Error(
-			`Found multiple created objects with type ending in "${typeSuffix}"; refine the selector`,
-		);
-	}
-
-	return matches[0].objectId;
 }
 
 function writeConstantsFile(args: {
@@ -89,7 +50,7 @@ async function publish(
 	const { client, keypair, config, address } = ctx;
 
 	const { modules, dependencies } = JSON.parse(
-		execSync(`sui move build --dump-bytecode-as-base64 --path sui/fta`, {
+		execSync(`sui move build --dump-bytecode-as-base64 --path contracts/fta`, {
 			encoding: 'utf-8',
 		})
 	);
@@ -139,37 +100,38 @@ async function publish(
 	console.log('  ftaId:       ', frontierTransitAuthorityId);
 
 
-	const transferTx = new Transaction();
+	// const transferTx = new Transaction();
 
-	transferTx.moveCall({
-		target: `${publishedPackageId}::fta::exchange_upgrade_cap`,
-		arguments: [
-			transferTx.object(frontierTransitAuthorityId),
-			transferTx.object(upgradeCapId),
-		],
-	});
+	// transferTx.moveCall({
+	// 	target: `${publishedPackageId}::fta::exchange_upgrade_cap`,
+	// 	arguments: [
+	// 		transferTx.object(frontierTransitAuthorityId),
+	// 		transferTx.object(upgradeCapId),
+	// 	],
+	// });
 
-	const transferExec = await client.signAndExecuteTransaction({
-		signer: keypair,
-		transaction: transferTx,
-		options: { showObjectChanges: true, showEffects: true, showEvents: true },
-	});
-	console.log("Transfer exec digest: ", transferExec.digest);
-	console.log("Transfer exec changes:\n", transferExec.objectChanges);
+	// const transferExec = await client.signAndExecuteTransaction({
+	// 	signer: keypair,
+	// 	transaction: transferTx,
+	// 	options: { showObjectChanges: true, showEffects: true, showEvents: true },
+	// });
+	// console.log("Transfer exec digest: ", transferExec.digest);
+	// console.log("Transfer exec changes:\n", transferExec.objectChanges);
 
-	const createdCapChange = transferExec.objectChanges?.findLast(change => {
-		return change.type === 'created' && change.objectType.endsWith('::upgrade_cap::UpgradeCap')
-	});
-	if (!createdCapChange || createdCapChange.type !== 'created') {
-		throw new Error('No UpgradeCap created in transaction');
-	}
-	const newCapId = createdCapChange!.objectId;
+	// const createdCapChange = transferExec.objectChanges?.findLast(change => {
+	// 	return change.type === 'created' && change.objectType.endsWith('::upgrade_cap::UpgradeCap')
+	// });
+	// if (!createdCapChange || createdCapChange.type !== 'created') {
+	// 	throw new Error('No UpgradeCap created in transaction');
+	// }
+	//const newCapId = createdCapChange!.objectId;
+	const newCapId = upgradeCapId;
 
 	console.log('exchange_upgrade_cap complete');
-	console.log('  digest:', transferExec.digest);
+	// console.log('  digest:', transferExec.digest);
 
 	writeConstantsFile({
-		originalAt: publishDigest,
+		originalAt: publishedPackageId,
 		publishedAt: publishedPackageId,
 		newCapId: newCapId,
 		frontierTransitAuthorityId,
