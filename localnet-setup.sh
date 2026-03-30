@@ -15,7 +15,7 @@ fi
 
 # Directory of the script
 SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
-WORKSPACE_DIR="$SCRIPT_DIR/../"
+WORKSPACE_DIR="$SCRIPT_DIR/.."
 
 # Start the localnet chain
 sui start --with-faucet --force-regenesis &
@@ -152,7 +152,7 @@ pnpm configure-world $NETWORK
 DELAY_SECONDS=0 pnpm create-test-resources $NETWORK
 
 # Update the .env files with the package ID
-world_package_id=$(jq -r ".world.packageId" $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/extracted-object-ids.json)
+world_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/extracted-object-ids.json | jq -r ".world.packageId")
 sed -i "s/WORLD_PACKAGE_ID=/WORLD_PACKAGE_ID=$world_package_id/g" "$WORKSPACE_DIR/.env"
 cp "$WORKSPACE_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
 cp "$WORKSPACE_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"  
