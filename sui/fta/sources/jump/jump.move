@@ -90,21 +90,19 @@ public fun issue_jump_permit(
     );
 
     // Get and transfer the source gate fee
-    let source_gate_fee_recipient = fta.gate_table().get_by_gate(source_gate).fee_recipient();
+    let source_gate_fee_recipient = fta.gate_registry().get(source_gate).fee_recipient();
     let source_gate_fee_coin = payment.split(quote.estimate().source_gate_fee(), ctx);
     source_gate_fee_coin.send_funds(source_gate_fee_recipient);
 
     // Get and transfer the destination gate fee
-    let destination_gate_fee_recipient = fta
-        .gate_table()
-        .get_by_gate(destination_gate)
-        .fee_recipient();
+    let destination_gate_fee_recipient = fta.gate_registry().get(destination_gate).fee_recipient();
     let destination_gate_fee_coin = payment.split(quote.estimate().destination_gate_fee(), ctx);
     destination_gate_fee_coin.send_funds(destination_gate_fee_recipient);
 
     // Get and transfer the source network node fee
     let source_network_node_fee_recipient = fta
-        .get_network_node_record_for_gate(source_gate)
+        .network_node_registry()
+        .get_by_gate(source_gate)
         .fee_recipient();
     let source_network_node_fee_coin = payment.split(
         quote.estimate().source_network_node_fee(),
@@ -114,7 +112,8 @@ public fun issue_jump_permit(
 
     // Get and transfer the destination network node fee
     let destination_network_node_fee_recipient = fta
-        .get_network_node_record_for_gate(destination_gate)
+        .network_node_registry()
+        .get_by_gate(destination_gate)
         .fee_recipient();
     let destination_network_node_fee_coin = payment.split(
         quote.estimate().destination_network_node_fee(),

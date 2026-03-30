@@ -1,4 +1,4 @@
-module fta::gate;
+module fta::gate_control;
 
 use fta::access;
 use fta::fta::FrontierTransitAuthority;
@@ -9,14 +9,14 @@ use world::energy::EnergyConfig;
 use world::gate::Gate;
 use world::network_node::NetworkNode;
 
-#[error(code = 0)]
-const EGateNotInNetwork: vector<u8> = b"This gate is not part of the Frontier Transit Authority";
 #[error(code = 1)]
+const EGateNotInNetwork: vector<u8> = b"This gate is not part of the Frontier Transit Authority";
+#[error(code = 2)]
 const EGateHasNoNetworkNode: vector<u8> =
     b"The gate does not have a network node (it may have been destroyed)";
-#[error(code = 2)]
-const ENetworkNodeNotInNetwork: vector<u8> =
-    b"The network node for this gate is not part of the Frontier Transit Authority";
+#[error(code = 3)]
+const ENetworkNodeNotRegistered: vector<u8> =
+    b"The network node for this gate has not been registered with the Frontier Transit Authority";
 
 /// Onlines or Offlines an FTA gate if it's not already online
 public(package) fun change_online(
@@ -29,11 +29,11 @@ public(package) fun change_online(
     energy_config: &EnergyConfig,
     ctx: &mut TxContext,
 ) {
-    assert!(fta.gate_table().gate_registered(gate), EGateNotInNetwork);
+    assert!(fta.gate_registry().registered(gate), EGateNotInNetwork);
     assert!(gate.energy_source_id().is_some(), EGateHasNoNetworkNode);
     assert!(
-        fta.network_node_table().contains(*gate.energy_source_id().borrow()),
-        ENetworkNodeNotInNetwork,
+        fta.network_node_registry().registered_by_id(*gate.energy_source_id().borrow()),
+        ENetworkNodeNotRegistered,
     );
     if (gate.is_online() != online) {
         let (gate_owner_cap, receipt) = access::borrow_gate_owner_cap(

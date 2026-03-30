@@ -18,7 +18,7 @@ public fun update_gate_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
-    let gate_record = fta.gate_table_mut().get_by_gate_mut(gate);
+    let gate_record = fta.gate_registry_mut().get_mut(gate);
     assert!(
         management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
         EManagementCapWrongResource,
@@ -32,7 +32,7 @@ public fun update_gate_fee_recipient(
     gate: &Gate,
     recipient: address,
 ) {
-    let gate_record = fta.gate_table_mut().get_by_gate_mut(gate);
+    let gate_record = fta.gate_registry_mut().get_mut(gate);
     assert!(
         management_cap.is_authorized(object::id(gate), gate_record.object_registration_id()),
         EManagementCapWrongResource,
@@ -49,7 +49,7 @@ public fun update_network_node_fee(
     takes_effect_on: u64,
     clock: &Clock,
 ) {
-    let network_node_record = fta.get_network_node_record_mut(network_node);
+    let network_node_record = fta.network_node_registry_mut().get_mut(network_node);
     assert!(
         management_cap.is_authorized(
             object::id(network_node),
@@ -67,7 +67,7 @@ public fun update_network_node_fee_recipient(
     network_node: &NetworkNode,
     recipient: address,
 ) {
-    let network_node_record = fta.get_network_node_record_mut(network_node);
+    let network_node_record = fta.network_node_registry_mut().get_mut(network_node);
     assert!(
         management_cap.is_authorized(
             object::id(network_node),

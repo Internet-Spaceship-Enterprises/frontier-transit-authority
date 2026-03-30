@@ -23,7 +23,7 @@ public(package) fun borrow_gate_owner_cap(
     ctx: &TxContext,
 ): (OwnerCap<Gate>, ReturnOwnerCapReceipt) {
     // Ensure FTA controls the gate
-    assert!(fta.gate_table().gate_registered(gate), EGateNotInNetwork);
+    assert!(fta.gate_registry().registered(gate), EGateNotInNetwork);
     assert!(object::id(character) == fta.get_owner_character(), EWrongCharacter);
 
     // Get the owner cap and receipt

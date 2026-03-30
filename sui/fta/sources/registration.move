@@ -97,7 +97,7 @@ fun transfer_gate(
     assert!(!gate.linked_gate_id().is_none(), EGatesNotLinked);
 
     // Ensure that the associated network node is already registered
-    assert!(fta.network_node_registered(network_node), ENetworkNodeNotRegistered);
+    assert!(fta.network_node_registry().registered(network_node), ENetworkNodeNotRegistered);
 
     // Ensure that either the owner cap was provided or we already own it
     // assert!(
@@ -146,7 +146,7 @@ fun transfer_gate(
         ctx,
     );
     // Put the record in the table using a unique hash for the pair
-    fta.gate_table_mut().add(record);
+    fta.gate_registry_mut().add(record);
 }
 
 public fun transfer_gate_pair_same_network_node(
@@ -356,7 +356,7 @@ public fun register_network_node(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    assert!(!fta.network_node_registered(network_node), ENetworkNodeAlreadyRegistered);
+    assert!(!fta.network_node_registry().registered(network_node), ENetworkNodeAlreadyRegistered);
     // Ensure the network node owner cap provided is the right one for the network node
     assert!(
         network_node_owner_cap.is_authorized(object::id(network_node)),
@@ -366,18 +366,20 @@ public fun register_network_node(
         network_node.owner_cap_id() == object::id(network_node_owner_cap),
         ENetworkNodeOwnerCapMismatch,
     );
-    fta.add_network_node_record(
-        network_node_record::new(
-            clock.timestamp_ms(),
-            object::id(current_owner),
-            ctx.sender(),
-            object::id(network_node),
-            jump_fee,
-            fee_recipient,
-            clock,
-            ctx,
-        ),
-    );
+    fta
+        .network_node_registry_mut()
+        .add(
+            network_node_record::new(
+                clock.timestamp_ms(),
+                object::id(current_owner),
+                ctx.sender(),
+                object::id(network_node),
+                jump_fee,
+                fee_recipient,
+                clock,
+                ctx,
+            ),
+        );
 }
 
 /// Prepares a gate for FTA operation
@@ -403,9 +405,9 @@ public fun return_gate_to_owner(
     // Transfer it to the original owner
     cap.transfer_owner_cap_with_receipt(
         receipt,
-        fta.gate_table().get_by_gate(gate).transferred_from_character_id().to_address(),
+        fta.gate_registry().get(gate).transferred_from_character_id().to_address(),
         ctx,
     );
     // Remove the gate from the network
-    fta.gate_table_mut().deregister(gate);
+    fta.gate_registry_mut().deregister(gate);
 }

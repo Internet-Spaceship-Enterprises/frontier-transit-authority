@@ -63,16 +63,15 @@ public fun new(
         constants::jump_base_validity_duration(),
     );
 
-    let source_gate_base_fee = fta.gate_table().get_by_gate(source_gate).current_fee(clock);
-    let destination_gate_base_fee = fta
-        .gate_table()
-        .get_by_gate(destination_gate)
-        .current_fee(clock);
+    let source_gate_base_fee = fta.gate_registry().get(source_gate).current_fee(clock);
+    let destination_gate_base_fee = fta.gate_registry().get(destination_gate).current_fee(clock);
     let source_network_node_base_fee = fta
-        .network_node_table()[*source_gate.energy_source_id().borrow()]
+        .network_node_registry()
+        .get_by_id(*source_gate.energy_source_id().borrow())
         .current_fee(clock);
     let destination_network_node_base_fee = fta
-        .network_node_table()[*destination_gate.energy_source_id().borrow()]
+        .network_node_registry()
+        .get_by_id(*destination_gate.energy_source_id().borrow())
         .current_fee(clock);
 
     let scaling_factor = (
