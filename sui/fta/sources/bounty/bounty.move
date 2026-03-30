@@ -3,7 +3,6 @@ module fta::bounty;
 use assets::EVE::EVE;
 use sui::balance::Balance;
 use sui::clock::Clock;
-use sui::coin::Coin;
 use sui::linked_table::{Self, LinkedTable};
 
 public struct BountyEarned has store {
@@ -36,6 +35,10 @@ public(package) fun earn(bounty: &mut Bounty, killmail_id: ID, value: u64, clock
     bounty.earned_history.push_back(killmail_id, earned);
 }
 
+public(package) fun value(bounty: &Bounty): u64 {
+    bounty.value
+}
+
 public(package) fun pay(
     bounty: &mut Bounty,
     killmail_id: ID,
@@ -44,9 +47,9 @@ public(package) fun pay(
     balance: &mut Balance<EVE>,
     clock: &Clock,
 ) {
-    // Payout is the smaller of the bounty value and the balance,
+    // Payout is the smaller of the damage value, the bounty value, and the balance,
     // since we can't pay out more than we have in the bounty pool
-    let payout = std::u64::min(balance.value(), value);
+    let payout = std::u64::min(std::u64::min(balance.value(), value), bounty.value);
     bounty.value = bounty.value - payout;
 
     balance.split(payout).send_funds(recipient);

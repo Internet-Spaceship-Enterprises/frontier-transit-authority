@@ -172,32 +172,30 @@ public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &G
 //=================================
 
 /// Processes a batch of killmails, updating the gate and network node registries and the blacklist as necessary.
-public fun process_killmails(
+public fun process_killmail(
     fta: &mut FrontierTransitAuthority,
-    killmails: &vector<Killmail>,
+    killmail: &Killmail,
+    killer: &Character,
+    victim: &Option<Character>,
     object_registry: &ObjectRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
-    let len = killmails.length();
-    let mut i = 0;
-    while (i < len) {
-        let killmail = vector::borrow(killmails, i); // borrow element by index
-        fta
-            .killmail_registry
-            .process_killmail(
-                killmail,
-                &mut fta.gate_registry,
-                &mut fta.network_node_registry,
-                &mut fta.jump_history,
-                &mut fta.blacklist,
-                &mut fta.bounty_board,
-                object_registry,
-                clock,
-                ctx,
-            );
-        i = i + 1;
-    }
+    fta
+        .killmail_registry
+        .process_killmail(
+            killmail,
+            killer,
+            victim,
+            &mut fta.gate_registry,
+            &mut fta.network_node_registry,
+            &mut fta.jump_history,
+            &mut fta.blacklist,
+            &mut fta.bounty_board,
+            object_registry,
+            clock,
+            ctx,
+        );
 }
 
 //=================================

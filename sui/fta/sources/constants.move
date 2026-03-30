@@ -38,6 +38,11 @@ const NETWORK_NODE_UPTIME_REQUIREMENT_FOR_BLACKLIST: u64 = 40; // 40% minimum up
 /// The period (in milliseconds) over which to evaluate a network node's online performance for blacklisting decisions
 const NETWORK_NODE_UPTIME_REQUIREMENT_PERIOD: u64 = 30 * 24 * 60 * 60 * 1000; // Look at the past 30 days of online performance for blacklisting decisions
 
+/// The default bounty to apply on a character for the destruction of an FTA asset
+const CHARACTER_BOUNTY_DEFAULT_VALUE: u64 = 1000000;
+/// The default bounty to apply on a tribe for the destruction of an FTA asset
+const TRIBE_BOUNTY_DEFAULT_VALUE: u64 = 1000000;
+
 public(package) fun bounty_fee(): u64 {
     BOUNTY_FEE
 }
@@ -88,4 +93,12 @@ public(package) fun network_node_uptime_requirement_for_blacklist(): u64 {
 
 public(package) fun network_node_uptime_requirement_period(): u64 {
     NETWORK_NODE_UPTIME_REQUIREMENT_PERIOD
+}
+
+public(package) fun character_bounty_default_value(): u64 {
+    CHARACTER_BOUNTY_DEFAULT_VALUE
+}
+
+public(package) fun tribe_bounty_default_value(): u64 {
+    TRIBE_BOUNTY_DEFAULT_VALUE
 }
