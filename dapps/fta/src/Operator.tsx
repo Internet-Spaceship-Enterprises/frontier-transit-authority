@@ -18,14 +18,13 @@ import {
 import { Link2Icon } from "@radix-ui/react-icons";
 
 type AssemblyTableProps = {
-    assemblies: AssemblyData[] | null;
+    assemblies: Record<string, AssemblyData> | null;
     sorting: SortingState;
     dAppKit: ReturnType<typeof useDAppKit>;
     account: ReturnType<typeof useCurrentAccount>;
     setSorting: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
     registrationPendingById: Record<string, boolean>;
     setRegistrationPendingById: (updater: Record<string, boolean> | ((old: Record<string, boolean>) => Record<string, boolean>)) => void;
-    gatesLookupTable?: Record<string, AssemblyData>;
 };
 
 type AssemblyData = {
@@ -104,12 +103,14 @@ function renderTable(table: ReactTable<AssemblyData>) {
 
 async function registerGate(gate: AssemblyData, props: AssemblyTableProps) {
     console.log("Registering gate:", gate);
+    console.log("Props:", props);
     const gateAssembly = (gate.response.assembly as AssemblyType<Assemblies.SmartGate>);
     if (!gateAssembly.gate.destinationId) {
         console.error("Cannot register an unlinked gate");
         return;
     }
-    const linkedGate = props.gatesLookupTable![gateAssembly.gate.destinationId];
+    console.log("Destination gate ID:", gateAssembly.gate.destinationId);
+    const linkedGate = props.assemblies![gateAssembly.gate.destinationId];
     if (!linkedGate) {
         console.error("You do not own the linked gate with ID:", gateAssembly.gate.destinationId);
         return;
@@ -178,7 +179,7 @@ function GateAssemblyTable(props: AssemblyTableProps) {
     );
     const table = useReactTable({
         columns,
-        data: props.assemblies || [],
+        data: Object.values(props.assemblies || {}),
         //debugTable: true,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(), //client-side sorting
@@ -251,7 +252,7 @@ function NetworkNodeAssemblyTable(props: AssemblyTableProps) {
     );
     const table = useReactTable({
         columns,
-        data: props.assemblies || [],
+        data: Object.values(props.assemblies || {}),
         //debugTable: true,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(), //client-side sorting
@@ -271,20 +272,12 @@ type OperatorProps = {
 export function Operator(props: OperatorProps) {
     const dAppKit = useDAppKit();
     const account = useCurrentAccount();
-    const [networkNodes, setNetworkNodes] = useState<AssemblyData[] | null>(null);
-    const [gates, setGates] = useState<AssemblyData[] | null>(null);
+    const [networkNodes, setNetworkNodes] = useState<Record<string, AssemblyData> | null>(null);
+    const [gates, setGates] = useState<Record<string, AssemblyData> | null>(null);
 
     const [gateSorting, setGateSorting] = useState<SortingState>([]);
     const [networkNodeSorting, setNetworkNodeSorting] = useState<SortingState>([]);
     const [registerPendingById, setRegisterPendingById] = useState<Record<string, boolean>>({});
-
-    const gatesMap: Record<string, AssemblyData> = useMemo(() => {
-        const map: Record<string, AssemblyData> = {};
-        gates?.forEach(gate => {
-            map[gate.response.assembly.id] = gate;
-        });
-        return map;
-    }, [gates]);
 
     useEffect(() => {
         console.log("Loading Assemblies!");
@@ -294,16 +287,29 @@ export function Operator(props: OperatorProps) {
             await Promise.all(props.characters.map(async char => {
                 const networkNodesPromise = await getOwnedAssembliesByType(char.id, `network_node::NetworkNode`);
                 const gatesPromise = await getOwnedAssembliesByType(char.id, "gate::Gate");
-                setNetworkNodes(networkNodes.concat(networkNodesPromise.map(response => ({
+                networkNodes = networkNodes.concat(networkNodesPromise.map(response => ({
                     owner: char.id,
                     response,
-                }))));
-                setGates(gates.concat(gatesPromise.map(response => ({
+                })));
+                gates = gates.concat(gatesPromise.map(response => ({
                     owner: char.id,
                     response,
-                }))));
+                })));
             }));
-        }
+            let networkNodesMap: Record<string, AssemblyData> = {};
+            networkNodes.forEach(networkNode => {
+                networkNodesMap[networkNode.response.assembly.id] = networkNode;
+            });
+            console.log("Setting network nodes:", networkNodesMap);
+            setNetworkNodes(networkNodesMap);
+
+            let gatesMap: Record<string, AssemblyData> = {};
+            gates.forEach(gate => {
+                gatesMap[gate.response.assembly.id] = gate;
+            });
+            console.log("Setting gates:", gatesMap);
+            setGates(gatesMap);
+        };
         load();
     }, [props.characters]);
 
@@ -320,7 +326,7 @@ export function Operator(props: OperatorProps) {
                 </Tabs.Content>
 
                 <Tabs.Content value="gates">
-                    <GateAssemblyTable assemblies={gates} sorting={gateSorting} setSorting={setGateSorting} registrationPendingById={registerPendingById} setRegistrationPendingById={setRegisterPendingById} dAppKit={dAppKit} account={account} gatesLookupTable={gatesMap} />
+                    <GateAssemblyTable assemblies={gates} sorting={gateSorting} setSorting={setGateSorting} registrationPendingById={registerPendingById} setRegistrationPendingById={setRegisterPendingById} dAppKit={dAppKit} account={account} />
                 </Tabs.Content>
             </Box>
         </Tabs.Root>

@@ -3,10 +3,14 @@ import ReactDOM from "react-dom/client";
 import "@radix-ui/themes/styles.css";
 // import "./main.css";
 
-import { QueryClient } from "@tanstack/react-query";
 import App from "./App.tsx";
-import { EveFrontierProvider } from "@evefrontier/dapp-kit";
 import { Theme } from "@radix-ui/themes";
+import { dAppKit } from "@evefrontier/dapp-kit";
+import { NotificationProvider } from "@evefrontier/dapp-kit";
+import SmartObjectProvider from "./SmartObjectProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { DAppKitProvider } from "@mysten/dapp-kit-react";
+import { VaultProvider } from "@evefrontier/dapp-kit";
 
 const queryClient = new QueryClient();
 
@@ -14,9 +18,17 @@ const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Theme appearance="dark">
-      <EveFrontierProvider queryClient={queryClient}>
-        <App />
-      </EveFrontierProvider>
+    <QueryClientProvider client={queryClient}>
+      <DAppKitProvider dAppKit={dAppKit}>
+        <VaultProvider>
+          <SmartObjectProvider>
+            <NotificationProvider>
+              <App />
+            </NotificationProvider>
+          </SmartObjectProvider>
+        </VaultProvider>
+      </DAppKitProvider>
+    </QueryClientProvider>
     </Theme>
   </React.StrictMode>,
 );

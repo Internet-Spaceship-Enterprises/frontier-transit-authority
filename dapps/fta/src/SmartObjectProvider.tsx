@@ -1,0 +1,265 @@
+import {
+    ReactNode,
+    useState,
+    createContext,
+    useEffect,
+    useCallback,
+    useRef,
+} from "react";
+
+import {
+    Assemblies,
+    AssemblyType,
+    DetailedSmartCharacterResponse,
+} from "@evefrontier/dapp-kit";
+
+import { DEFAULT_TENANT, POLLING_INTERVAL } from "@evefrontier/dapp-kit";
+import { getAssemblyWithOwner, MoveObjectData } from "@evefrontier/dapp-kit";
+import {
+    createLogger,
+    transformToAssembly,
+    transformToCharacter,
+} from "@evefrontier/dapp-kit";
+import { getDatahubGameInfo } from "@evefrontier/dapp-kit";
+import { useConnection } from "@evefrontier/dapp-kit";
+import { SmartObjectContextType } from "@evefrontier/dapp-kit";
+
+const log = createLogger();
+
+/** Input for fetching object data: either itemId + tenant (derive object ID) or a Sui object ID directly.
+ * @category Types
+ */
+export type FetchObjectDataInput = { objectId: string };
+
+/** @category Types */
+enum QueryParams {
+    OBJECT_ID = "objectId",
+}
+
+
+/** @category Providers */
+export const SmartObjectContext = createContext<SmartObjectContextType>({
+    tenant: DEFAULT_TENANT,
+    assembly: null,
+    assemblyOwner: null,
+    loading: true,
+    error: null,
+    refetch: async () => { },
+});
+
+/**
+ * SmartObjectProvider component provides context for smart objects data.
+ * It uses GraphQL queries to fetch objects on the Sui blockchain
+ * from the EVE Frontier package, with optional polling for updates.
+ *
+ * The provider fetches both the assembly data and its owner (assemblyOwner) information:
+ * 1. Fetches assembly data with dynamic fields
+ * 2. Uses owner_cap_id to resolve the Character OwnerCap
+ * 3. Fetches full assemblyOwner data from the Character ID
+ *
+ * @category Providers
+ */
+const SmartObjectProvider = ({ children }: { children: ReactNode }) => {
+    const [assembly, setAssembly] = useState<AssemblyType<Assemblies> | null>(
+        null,
+    );
+    const [assemblyOwner, setAssemblyOwner] =
+        useState<DetailedSmartCharacterResponse | null>(null);
+    const [selectedObjectId, setSelectedObjectId] = useState<string>("");
+    const [selectedTenant, setSelectedTenant] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const pollingRef = useRef<NodeJS.Timeout | null>(null);
+    const lastDataHashRef = useRef<string | null>(null);
+
+    const { isConnected } = useConnection();
+
+    // Fetch object data with owner/assemblyOwner info.
+    // Accepts either { itemId, selectedTenant } (derive Sui object ID) or { objectId } (use directly).
+    const fetchObjectData = useCallback(
+        async (input: FetchObjectDataInput, isInitialFetch = false) => {
+            if (!input.objectId) return;
+
+            if (isInitialFetch) {
+                setLoading(true);
+            }
+            setError(null);
+
+            try {
+                const objectId = input.objectId;
+                log.info(
+                    "[DappKit] SmartObjectProvider: Fetching object:", objectId,
+                );
+
+                // Fetch both assembly and assemblyOwner data
+                const {
+                    moveObject,
+                    assemblyOwner: characterInfo,
+                    energySource,
+                    destinationGate,
+                } = await getAssemblyWithOwner(objectId);
+
+                if (!moveObject) {
+                    log.warn(
+                        "[DappKit] SmartObjectProvider: Object not found or not a Move object",
+                    );
+                    setAssembly(null);
+                    setAssemblyOwner(null);
+                    setError("Object not found or not a Move object");
+                    return;
+                }
+
+                // Create a hash of the data to check for changes
+                const dataHash = JSON.stringify({
+                    moveObject,
+                    assemblyOwner: characterInfo,
+                    energySource,
+                });
+
+                // Only update state if the data changed (optimization for polling)
+                if (isInitialFetch || lastDataHashRef.current !== dataHash) {
+                    log.info("[DappKit] SmartObjectProvider: Object data updated");
+                    lastDataHashRef.current = dataHash;
+
+                    // Extract typeId from the raw JSON to fetch datahub info
+                    const rawJson = moveObject.contents?.json as
+                        | { type_id?: string; status?: { type_id?: string } }
+                        | undefined;
+                    const typeId = rawJson?.type_id || rawJson?.status?.type_id || "0";
+
+                    // Fetch datahub game info (name, description, image defaults)
+                    let datahubInfo = null;
+                    try {
+                        datahubInfo = await getDatahubGameInfo(parseInt(typeId, 10));
+                    } catch (err) {
+                        log.warn(
+                            "[DappKit] SmartObjectProvider: Failed to fetch datahub info:",
+                            err,
+                        );
+                    }
+
+                    // Transform assembly with assemblyOwner and datahub info
+                    const transformed = await transformToAssembly(
+                        objectId,
+                        moveObject as MoveObjectData,
+                        {
+                            character: characterInfo,
+                            datahubInfo,
+                            energySource: energySource,
+                            destinationGate: destinationGate,
+                        },
+                    );
+
+                    setAssembly(transformed);
+
+                    // Transform and set assemblyOwner: owner of the assembly
+                    if (characterInfo) {
+                        const transformedCharacter = transformToCharacter(characterInfo);
+                        setAssemblyOwner(transformedCharacter);
+                    } else {
+                        setAssemblyOwner(null);
+                    }
+                }
+                setError(null);
+            } catch (err: unknown) {
+                log.error("[DappKit] SmartObjectProvider: Query error:", err);
+                setError(err instanceof Error ? err.message : "Failed to fetch object");
+            } finally {
+                if (isInitialFetch) {
+                    setLoading(false);
+                }
+            }
+        },
+        [],
+    );
+
+    // Initialize the object ID (env or query params) and tenant (query params).
+    // Tenant comes from URL ?tenant= with fallback DEFAULT_TENANT.
+    useEffect(() => {
+        log.info("[DappKit] SmartObjectProvider: Checking for item ID");
+
+        const queryParams = new URLSearchParams(window.location.search);
+
+        // Derive object ID from item ID and tenant and passed via query param
+        const objectId = queryParams.get(QueryParams.OBJECT_ID);
+
+        if (objectId) {
+            setSelectedObjectId(objectId);
+            setSelectedTenant(DEFAULT_TENANT);
+        } else {
+            log.error("[DappKit] SmartObjectProvider: No object ID provided");
+            setLoading(false);
+        }
+    }, []);
+
+    // Fetch and poll for object data
+    useEffect(() => {
+        if (!selectedObjectId || !isConnected) {
+            setLoading(false);
+            return;
+        }
+
+        const input: FetchObjectDataInput = { objectId: selectedObjectId };
+
+        // Initial fetch
+        fetchObjectData(input, true);
+
+        // Set up polling
+        pollingRef.current = setInterval(() => {
+            fetchObjectData(input, false);
+        }, POLLING_INTERVAL);
+
+        log.info(
+            "[DappKit] SmartObjectProvider: Started polling for object:",
+            selectedObjectId,
+        );
+
+        return () => {
+            if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+                log.info("[DappKit] SmartObjectProvider: Stopped polling");
+            }
+            lastDataHashRef.current = null;
+        };
+    }, [
+        selectedObjectId,
+        selectedTenant,
+        isConnected,
+        fetchObjectData,
+    ]);
+
+    const handleRefetch = useCallback(async () => {
+        if (!selectedObjectId) return;
+        const input: FetchObjectDataInput = { objectId: selectedObjectId };
+        await fetchObjectData(input, true);
+    }, [selectedObjectId, selectedTenant, fetchObjectData]);
+
+    // Refetch with retries after a mutation (e.g. metadata save)
+    // so the indexer can catch up.
+    const handleRefetchWithRetries = useCallback(async () => {
+        await handleRefetch();
+        await new Promise<void>((resolve) => {
+            setTimeout(resolve, 1500);
+        });
+        await handleRefetch();
+    }, [handleRefetch]);
+
+    return (
+        <SmartObjectContext.Provider
+            value={{
+                tenant: selectedTenant,
+                assembly,
+                assemblyOwner,
+                loading,
+                error,
+                refetch: handleRefetchWithRetries,
+            }}
+        >
+            {children}
+        </SmartObjectContext.Provider>
+    );
+};
+
+export default SmartObjectProvider;

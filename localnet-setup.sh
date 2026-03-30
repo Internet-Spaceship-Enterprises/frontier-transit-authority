@@ -13,6 +13,7 @@ if ! command -v jq &> /dev/null; then
     exit 1
 fi
 
+
 # Directory of the script
 SETUP_SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 WORKSPACE_DIR="$SETUP_SCRIPT_DIR/.."
@@ -123,6 +124,7 @@ EXTENSION_CONFIG_ID=
 ASSETS_PACKAGE_ID=
 EVE_CURRENCY_OBJECT_ID=
 EVE_TREASURY_OBJECT_ID=
+EVE_COIN_OBJECT_ID=
 EVE_ADMIN_CAP_ID=
 
 # ============================================
@@ -157,17 +159,19 @@ pnpm configure-world $NETWORK
 # Publish the assets (EVE token)
 publish assets "deployments/$NETWORK/assets_package.json" "$NETWORK" "$WORKSPACE_DIR/world-contracts/contracts/world/Pub.localnet.toml"
 assets_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select(.type == "published")) | .packageId')
+eve_currency_object_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | startswith("0x2::coin_registry::Currency"))) | .objectId')
 eve_coin_object_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | startswith("0x2::coin::Coin"))) | .objectId')
 eve_treasury_object_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | endswith("::EVE::EveTreasury"))) | .objectId')
 eve_admin_cap_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | endswith("::EVE::AdminCap"))) | .objectId')
 # Set the delay to 0 since we're just using localnet
 # This makes the deployment WAY faster
-DELAY_SECONDS=2 pnpm create-test-resources $NETWORK
+DELAY_SECONDS=0 pnpm create-test-resources $NETWORK
 
 # Update the .env files with the package IDs
 world_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/extracted-object-ids.json | jq -r ".world.packageId")
 sed -i "s/WORLD_PACKAGE_ID=/WORLD_PACKAGE_ID=$world_package_id/g" "$SETUP_SCRIPT_DIR/.env"
 sed -i "s/ASSETS_PACKAGE_ID=/ASSETS_PACKAGE_ID=$assets_package_id/g" "$SETUP_SCRIPT_DIR/.env"
+sed -i "s/EVE_CURRENCY_OBJECT_ID=/EVE_CURRENCY_OBJECT_ID=$eve_currency_object_id/g" "$SETUP_SCRIPT_DIR/.env"
 sed -i "s/EVE_COIN_OBJECT_ID=/EVE_COIN_OBJECT_ID=$eve_coin_object_id/g" "$SETUP_SCRIPT_DIR/.env"
 sed -i "s/EVE_TREASURY_OBJECT_ID=/EVE_TREASURY_OBJECT_ID=$eve_treasury_object_id/g" "$SETUP_SCRIPT_DIR/.env"
 sed -i "s/EVE_ADMIN_CAP_ID=/EVE_ADMIN_CAP_ID=$eve_admin_cap_id/g" "$SETUP_SCRIPT_DIR/.env"

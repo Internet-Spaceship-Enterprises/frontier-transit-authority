@@ -4,3 +4,6 @@ onlyBuiltDependencies:
 
 overrides:
   '@eveworld/ui-components': link:../../../dapps/packages/libs/ui-components
+
+packages:
+- "."
