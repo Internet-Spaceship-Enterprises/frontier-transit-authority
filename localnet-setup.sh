@@ -14,8 +14,10 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Directory of the script
-SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
-WORKSPACE_DIR="$SCRIPT_DIR/.."
+SETUP_SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+WORKSPACE_DIR="$SETUP_SCRIPT_DIR/.."
+
+source "$WORKSPACE_DIR/world-contracts/scripts/lib.sh"
 
 # Start the localnet chain
 sui start --with-faucet --force-regenesis &
@@ -49,7 +51,7 @@ set -e
 
 chain_id=$(sui client chain-identifier)
 # Update this package's Move.toml file
-sed -i "/^\[environments\]/,/^\[/{s/^[[:space:]]*$NETWORK[[:space:]]*=.*/$NETWORK = \"$chain_id\"/}" "$SCRIPT_DIR/sui/fta/Move.toml"
+sed -i "/^\[environments\]/,/^\[/{s/^[[:space:]]*$NETWORK[[:space:]]*=.*/$NETWORK = \"$chain_id\"/}" "$SETUP_SCRIPT_DIR/sui/fta/Move.toml"
 
 # Ensure the correct network is selected
 sui client switch --env $NETWORK
@@ -83,6 +85,13 @@ addr_player_b=$(sui client active-address)
 # Switch back to admin for world deployment
 sui client switch --address admin
 
+# Clean up deployment directories
+rm -rf "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK/"
+mkdir -p "$WORKSPACE_DIR/builder-scaffold/deployments/$NETWORK/"
+rm -rf "$WORKSPACE_DIR/builder-scaffold/deployments/$NETWORK/"
+mkdir -p "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK/"
+rm -f $WORKSPACE_DIR/builder-scaffold/test-resources.json
+
 echo "
 # ============================================
 # SUI NETWORK
@@ -101,7 +110,7 @@ PLAYER_A_ADDRESS=$addr_player_a
 PLAYER_B_ADDRESS=$addr_player_b
 
 ADMIN_PRIVATE_KEY=$(sui keytool export --json --key-identity admin | jq -r .exportedPrivateKey)
-GOVERNOR_PRIVATE_KEY=$ADMIN_PRIVATE_KEY
+GOVERNOR_PRIVATE_KEY=$(sui keytool export --json --key-identity admin | jq -r .exportedPrivateKey)
 PLAYER_A_PRIVATE_KEY=$(sui keytool export --json --key-identity player-a | jq -r .exportedPrivateKey)
 PLAYER_B_PRIVATE_KEY=$(sui keytool export --json --key-identity player-b | jq -r .exportedPrivateKey)
 
@@ -111,6 +120,8 @@ PLAYER_B_PRIVATE_KEY=$(sui keytool export --json --key-identity player-b | jq -r
 WORLD_PACKAGE_ID=
 BUILDER_PACKAGE_ID=
 EXTENSION_CONFIG_ID=
+ASSETS_PACKAGE_ID=
+EVE_CURRENCY_OBJECT_ID=
 
 # ============================================
 # TENANT
@@ -131,31 +142,35 @@ ENERGY_REQUIRED_VALUES=500,10,950,50,250,100,200,100,200,100,200,300,50,100,1,10
 # Gate Configuration
 GATE_TYPE_IDS=88086,84955
 MAX_DISTANCES=520340175991902420,1040680351983804840
-" > "$SCRIPT_DIR/.env" 
+" > "$SETUP_SCRIPT_DIR/.env" 
 
-cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
-cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env" 
-
-# Clean up deployment directories
-rm -rf "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK/"
-mkdir -p "$WORKSPACE_DIR/builder-scaffold/deployments/$NETWORK/"
-rm -rf "$WORKSPACE_DIR/builder-scaffold/deployments/$NETWORK/"
-mkdir -p "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK/"
-rm -f $WORKSPACE_DIR/builder-scaffold/test-resources.json
+# Copy the .env file to the relevant packages
+cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
+cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env" 
 
 cd "$WORKSPACE_DIR/world-contracts"
 pnpm install
 pnpm deploy-world $NETWORK
 pnpm configure-world $NETWORK
+
+# Publish the assets (EVE token)
+publish assets "deployments/$NETWORK/assets_package.json" "$NETWORK" "$WORKSPACE_DIR/world-contracts/contracts/world/Pub.localnet.toml"
+assets_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select(.type == "published")) | .packageId')
+eve_currency_object_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | startswith("0x2::coin_registry::Currency"))) | .objectId')
+# Finalize the EVE currency
+pnpm tsx $WORKSPACE_DIR/world-contracts/ts-scripts/assets/finalize-eve-currency.ts
+
 # Set the delay to 0 since we're just using localnet
 # This makes the deployment WAY faster
 DELAY_SECONDS=0 pnpm create-test-resources $NETWORK
 
-# Update the .env files with the package ID
+# Update the .env files with the package IDs
 world_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/extracted-object-ids.json | jq -r ".world.packageId")
-sed -i "s/WORLD_PACKAGE_ID=/WORLD_PACKAGE_ID=$world_package_id/g" "$SCRIPT_DIR/.env"
-cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
-cp "$SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"  
+sed -i "s/WORLD_PACKAGE_ID=/WORLD_PACKAGE_ID=$world_package_id/g" "$SETUP_SCRIPT_DIR/.env"
+sed -i "s/ASSETS_PACKAGE_ID=/ASSETS_PACKAGE_ID=$assets_package_id/g" "$SETUP_SCRIPT_DIR/.env"
+sed -i "s/EVE_CURRENCY_OBJECT_ID=/EVE_CURRENCY_OBJECT_ID=$eve_currency_object_id/g" "$SETUP_SCRIPT_DIR/.env"
+cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
+cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"  
 
 # Copy over deployment artifacts
 cp -r "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK" "$WORKSPACE_DIR/builder-scaffold/deployments/"

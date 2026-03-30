@@ -55,19 +55,19 @@ async function prepareTransferGate(
         throw new Error("Cannot transfer gate 2 without a network node connected");
     }
 
-    let nn1OwnerCap = null;
-    let nn1OwnerReceipt = null;
-    if (! await gateNetworkNodeRegistered(gate1Id, client, address)) {
-        const nn1OwnerCapId = await getNetworkNodeOwnerCapId(gate1NetworkNodeId, client, config, address);
-        if (!nn1OwnerCapId) {
-            throw "Unable to load gate 1's Network Node Owner Cap ID";
-        }
-        [nn1OwnerCap, nn1OwnerReceipt] = tx.moveCall({
-            target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
-            typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
-            arguments: [tx.object(characterObjectId), tx.object(nn1OwnerCapId)],
-        });
-    }
+    // let nn1OwnerCap = null;
+    // let nn1OwnerReceipt = null;
+    // if (! await gateNetworkNodeRegistered(gate1Id, client, address)) {
+    //     const nn1OwnerCapId = await getNetworkNodeOwnerCapId(gate1NetworkNodeId, client, config, address);
+    //     if (!nn1OwnerCapId) {
+    //         throw "Unable to load gate 1's Network Node Owner Cap ID";
+    //     }
+    //     [nn1OwnerCap, nn1OwnerReceipt] = tx.moveCall({
+    //         target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
+    //         typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
+    //         arguments: [tx.object(characterObjectId), tx.object(nn1OwnerCapId)],
+    //     });
+    // }
 
     if (gate1NetworkNodeId == gate2NetworkNodeId) {
         tx.moveCall({
@@ -79,14 +79,14 @@ async function prepareTransferGate(
                 gate1OwnerCap,
                 gate1OwnerReceipt,
                 tx.object(gate1NetworkNodeId),
-                tx.object.option({
-                    type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
-                    value: nn1OwnerCap,
-                }),
-                tx.object.option({
-                    type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
-                    value: nn1OwnerReceipt,
-                }),
+                // tx.object.option({
+                //     type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
+                //     value: nn1OwnerCap,
+                // }),
+                // tx.object.option({
+                //     type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
+                //     value: nn1OwnerReceipt,
+                // }),
                 tx.pure.u64(99),
                 tx.object(gate2Id),
                 gate2OwnerCap,
@@ -98,19 +98,19 @@ async function prepareTransferGate(
             ],
         });
     } else {
-        let nn2OwnerCap = null;
-        let nn2OwnerReceipt = null;
-        if (! await gateNetworkNodeRegistered(gate2Id, client, address)) {
-            const nn2OwnerCapId = await getNetworkNodeOwnerCapId(gate2NetworkNodeId, client, config, address);
-            if (!nn2OwnerCapId) {
-                throw "Unable to load gate 2's Network Node Owner Cap ID";
-            }
-            [nn2OwnerCap, nn2OwnerReceipt] = tx.moveCall({
-                target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
-                typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
-                arguments: [tx.object(characterObjectId), tx.object(nn2OwnerCapId)],
-            });
-        }
+        // let nn2OwnerCap = null;
+        // let nn2OwnerReceipt = null;
+        // if (! await gateNetworkNodeRegistered(gate2Id, client, address)) {
+        //     const nn2OwnerCapId = await getNetworkNodeOwnerCapId(gate2NetworkNodeId, client, config, address);
+        //     if (!nn2OwnerCapId) {
+        //         throw "Unable to load gate 2's Network Node Owner Cap ID";
+        //     }
+        //     [nn2OwnerCap, nn2OwnerReceipt] = tx.moveCall({
+        //         target: `${config.packageId}::${MODULES.CHARACTER}::borrow_owner_cap`,
+        //         typeArguments: [`${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode`],
+        //         arguments: [tx.object(characterObjectId), tx.object(nn2OwnerCapId)],
+        //     });
+        // }
 
         tx.moveCall({
             target: `${FTA_PACKAGE_ID}::transfer::transfer_gate_pair`,
@@ -121,27 +121,27 @@ async function prepareTransferGate(
                 gate1OwnerCap,
                 gate1OwnerReceipt,
                 tx.object(gate1NetworkNodeId),
-                tx.object.option({
-                    type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
-                    value: nn1OwnerCap,
-                }),
-                tx.object.option({
-                    type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
-                    value: nn1OwnerReceipt,
-                }),
+                // tx.object.option({
+                //     type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
+                //     value: nn1OwnerCap,
+                // }),
+                // tx.object.option({
+                //     type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
+                //     value: nn1OwnerReceipt,
+                // }),
                 tx.pure.u64(99),
                 tx.object(gate2Id),
                 gate2OwnerCap,
                 gate2OwnerReceipt,
                 tx.object(gate2NetworkNodeId),
-                tx.object.option({
-                    type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
-                    value: nn2OwnerCap,
-                }),
-                tx.object.option({
-                    type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
-                    value: nn2OwnerReceipt,
-                }),
+                // tx.object.option({
+                //     type: `${config.packageId}::${MODULES.ACCESS}::OwnerCap<${config.packageId}::${MODULES.NETWORK_NODE}::NetworkNode>`,
+                //     value: nn2OwnerCap,
+                // }),
+                // tx.object.option({
+                //     type: `${config.packageId}::${MODULES.ACCESS}::ReturnOwnerCapReceipt`,
+                //     value: nn2OwnerReceipt,
+                // }),
                 tx.pure.u64(99),
                 tx.object(config.energyConfig),
                 tx.object(config.locationRegistry),

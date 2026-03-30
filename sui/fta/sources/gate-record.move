@@ -12,6 +12,8 @@ public struct GateRecord has store {
     transferred_from_character_id: ID,
     transferred_from_wallet_addr: address,
     gate_id: ID,
+    // The address that should receive the jump fee for this gate
+    fee_recipient: address,
     // Where the key is the update timestamp and the value is the new fee structure
     fee_history: FeeHistory,
 }
@@ -23,6 +25,7 @@ public(package) fun new(
     transferred_from_wallet_addr: address,
     gate_id: ID,
     jump_fee: u64,
+    fee_recipient: address,
     clock: &Clock,
     ctx: &mut TxContext,
 ): GateRecord {
@@ -31,6 +34,7 @@ public(package) fun new(
         transferred_from_character_id: transferred_from_character_id,
         transferred_from_wallet_addr: transferred_from_wallet_addr,
         gate_id: gate_id,
+        fee_recipient: fee_recipient,
         fee_history: fee_history::new(jump_fee, clock, ctx),
     }
 }
@@ -42,6 +46,7 @@ public(package) fun destroy(record: GateRecord) {
         transferred_from_character_id: _,
         transferred_from_wallet_addr: _,
         gate_id: _,
+        fee_recipient: _,
         fee_history: fee_history,
     } = record;
     fee_history.destroy();
@@ -75,6 +80,10 @@ public(package) fun gate_id(record: &GateRecord): &ID {
     &record.gate_id
 }
 
-public(package) fun current_fee(record: &GateRecord): u64 {
-    record.current_fee()
+public(package) fun current_fee(record: &GateRecord, clock: &Clock): u64 {
+    record.fee_history.current_fee(clock)
+}
+
+public(package) fun fee_recipient(record: &GateRecord): address {
+    record.fee_recipient
 }

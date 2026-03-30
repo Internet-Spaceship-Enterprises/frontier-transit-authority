@@ -34,11 +34,17 @@ use_environment = "localnet"
 manifest_digest = "F8D772EDBB9358971958F9C67DF89A6EBE5B5F89AC6A1B5C9A209A15EFFB3691"
 deps = { Sui = "Sui_1" }
 
-[pinned.localnet.fgn]
+[pinned.localnet.assets]
+source = { local = "/frontier/world-contracts/contracts/assets" }
+use_environment = "localnet"
+manifest_digest = "F8D772EDBB9358971958F9C67DF89A6EBE5B5F89AC6A1B5C9A209A15EFFB3691"
+deps = { Sui = "Sui_1" }
+
+[pinned.localnet.fta]
 source = { root = true }
 use_environment = "localnet"
-manifest_digest = "BBAE9C40FA86A0CEFCD8EBB8BEF130FF35389F32B7E0681503A73D8F2DFE7EC6"
-deps = { std = "MoveStdlib", sui = "Sui", world = "World" }
+manifest_digest = "7D19DC7347AF0595D8392E3904DA3568186535160328CED977670C9AEB3385AE"
+deps = { assets = "assets", std = "MoveStdlib", sui = "Sui", world = "World" }
 
 [pinned.testnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "b38bca86f0323b3fe8b6b7f4ca0cd7ae7faebe4b" }
@@ -70,8 +76,14 @@ use_environment = "testnet"
 manifest_digest = "ED881AEE5B6E33C7A9D149CD1133047E41D103FAD527778F56F099E07F5F9C95"
 deps = { Sui = "Sui_1" }
 
-[pinned.testnet.fgn]
+[pinned.testnet.assets]
+source = { local = "/frontier/world-contracts/contracts/assets" }
+use_environment = "testnet"
+manifest_digest = "ED881AEE5B6E33C7A9D149CD1133047E41D103FAD527778F56F099E07F5F9C95"
+deps = { Sui = "Sui_1" }
+
+[pinned.testnet.fta]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "D6EDC39103A6B7D9459D8D6948A13CE8D7002AE0BC4EE52C560F5831DE581245"
-deps = { std = "MoveStdlib", sui = "Sui", world = "World" }
+manifest_digest = "E51EA6BC2E4A6FEF0654BB2C151A450A2F8DF7947BE0A2FB7D7AA6DBD2E2E296"
+deps = { assets = "assets", std = "MoveStdlib", sui = "Sui", world = "World" }
