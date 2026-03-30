@@ -40,3 +40,4 @@ dist/
 # pnpm-store when pnpm install executed in containers
 .pnpm-store
 
+sui/fgn/Move.lock

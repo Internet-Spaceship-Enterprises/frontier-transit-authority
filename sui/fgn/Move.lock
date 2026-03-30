@@ -4,6 +4,42 @@
 [move]
 version = 4
 
+[pinned.ef-localhost.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = 'crates\sui-framework\packages\move-stdlib', rev = "b38bca86f0323b3fe8b6b7f4ca0cd7ae7faebe4b" }
+use_environment = "ef-localhost"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.ef-localhost.MoveStdlib_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = 'crates\sui-framework\packages\move-stdlib', rev = "a9a6825eaf6273cc819ee3bcf65fd4909f7624a9" }
+use_environment = "ef-localhost"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.ef-localhost.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = 'crates\sui-framework\packages\sui-framework', rev = "b38bca86f0323b3fe8b6b7f4ca0cd7ae7faebe4b" }
+use_environment = "ef-localhost"
+manifest_digest = "023ED9A62A97B73AB86155C26E1FBD81D28E37596076C57A9335E8E65115D1DF"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.ef-localhost.Sui_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = 'crates\sui-framework\packages\sui-framework', rev = "a9a6825eaf6273cc819ee3bcf65fd4909f7624a9" }
+use_environment = "ef-localhost"
+manifest_digest = "023ED9A62A97B73AB86155C26E1FBD81D28E37596076C57A9335E8E65115D1DF"
+deps = { MoveStdlib = "MoveStdlib_1" }
+
+[pinned.ef-localhost.World]
+source = { git = "https://github.com/evefrontier/world-contracts.git", subdir = 'contracts\world', rev = "8eb197e4573275d6f45b0da2c69ee793487a49fd" }
+use_environment = "ef-localhost"
+manifest_digest = "F663283252819FFFBF7D1F34A69E81C8E2AE669BB3352BC5F21AEEDFC53A385D"
+deps = { Sui = "Sui_1" }
+
+[pinned.ef-localhost.fgn]
+source = { root = true }
+use_environment = "ef-localhost"
+manifest_digest = "F90B0CC7B4F826C53E6E8D8723E48E344F4AFA665326C4A6C87A0BB410124B09"
+deps = { std = "MoveStdlib", sui = "Sui", world = "World" }
+
 [pinned.localnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = 'crates\sui-framework\packages\move-stdlib', rev = "b38bca86f0323b3fe8b6b7f4ca0cd7ae7faebe4b" }
 use_environment = "localnet"
@@ -70,8 +106,8 @@ use_environment = "testnet"
 manifest_digest = "ED881AEE5B6E33C7A9D149CD1133047E41D103FAD527778F56F099E07F5F9C95"
 deps = { Sui = "Sui_1" }
 
-[pinned.testnet.frontier_gate_network]
+[pinned.testnet.fgn]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "DAFCAD45BECE7241BB59E2D9D45B0A084D61570D0510231E8979D0290EA92140"
+manifest_digest = "F742522CE6B1F1FB882D123EB475930CEB6071ACEFF55AEDE5729E63EDC7C5DE"
 deps = { std = "MoveStdlib", sui = "Sui", world = "World" }

@@ -33,6 +33,8 @@ const ENotEnoughNotice: vector<u8> = b"You have not provided enough notice for t
 const EFeeChangePending: vector<u8> = b"You cannot schedule a fee change when there is already a fee change pending";
 #[error(code = 7)]
 const ENoFeeActive: vector<u8> = b"No jump fee is currently active";
+#[error(code = 8)]
+const EFeeIncreaseTooLarge: vector<u8> = b"This is too large of a fee increase";
 
 // The minimum requirement for how long it takes for a new fee to take effect
 const FEE_CHANGE_MINIMUM_NOTICE: u64 = 604800000; // 1 week
@@ -207,8 +209,6 @@ public fun change_fee(
     // Ensure that the latest change is active, not pending.
     // This prevents scheduling a new change when the last change hasn't taken effect yet.
     assert!(latest_change.takes_effect_on <= clock.timestamp_ms(), EFeeChangePending);
-
-    let diff = (jump_fee - latest_change.jump_fee);
 
     assert!((jump_fee - latest_change.jump_fee) * 100000 / latest_change.jump_fee <= FEE_CHANGE_MAX_PERCENTAGE_THOUSANTHS, EFeeIncreaseTooLarge);
 
