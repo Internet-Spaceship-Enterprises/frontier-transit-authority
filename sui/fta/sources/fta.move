@@ -10,6 +10,16 @@ use std::hash;
 use sui::bcs;
 use sui::package::Publisher;
 use sui::table::{Self, Table};
+use world::gate::Gate;
+
+#[error(code = 1)]
+const EGateNotInNetwork: vector<u8> =
+    b"This gate, or its linked gate, is not part of the Frontier Transit Authority";
+#[error(code = 2)]
+const ENoLinkedGate: vector<u8> = b"You cannot perform an operation on a gate that is not linked";
+#[error(code = 3)]
+const EGateNotYours: vector<u8> =
+    b"You cannot modify the configuration for a gate you did not assign to FTA";
 
 /// The OTW for the module.
 public struct FTA has drop {}
@@ -49,6 +59,38 @@ fun init(otw: FTA, ctx: &mut TxContext) {
         network_node_table: table::new<ID, NetworkNodeRecord>(ctx),
         //killmail_table: table::new<ID, KillmailRecord>(ctx),
     });
+}
+
+public(package) fun get_gate_pair_hash(fta: &FrontierTransitAuthority, gate: &Gate): vector<u8> {
+    let gate_id = object::id(gate);
+    let linked_gate_id_opt = gate.linked_gate_id();
+    assert!(linked_gate_id_opt.is_some(), ENoLinkedGate);
+    let linked_gate_id = linked_gate_id_opt.borrow();
+    let key = gate_pair_hash(&gate_id, linked_gate_id);
+    assert!(fta.gate_table.contains(key), EGateNotInNetwork);
+    key
+}
+
+public(package) fun get_gate_record(
+    fta: &FrontierTransitAuthority,
+    gate: &Gate,
+    ctx: &TxContext,
+): &GateRecord {
+    let record_key = fta.get_gate_pair_hash(gate);
+    let record = fta.gate_table.borrow(record_key);
+    assert!(record.transferred_from_wallet_addr() == ctx.sender(), EGateNotYours);
+    record
+}
+
+public(package) fun get_gate_record_mut(
+    fta: &mut FrontierTransitAuthority,
+    gate: &Gate,
+    ctx: &TxContext,
+): &mut GateRecord {
+    let record_key = fta.get_gate_pair_hash(gate);
+    let record = fta.gate_table.borrow_mut(record_key);
+    assert!(record.transferred_from_wallet_addr() == ctx.sender(), EGateNotYours);
+    record
 }
 
 public(package) fun gate_table(fta: &FrontierTransitAuthority): &Table<vector<u8>, GateRecord> {

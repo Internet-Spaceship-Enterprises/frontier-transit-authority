@@ -1,8 +1,18 @@
 module fta::config;
 
-#[error(code = 3)]
-const EGateNotInNetwork: vector<u8> = b"This gate is not part of the Frontier Transit Authority";
-#[error(code = 12)]
-const ENoLinkedGate: vector<u8> = b"You cannot perform an operation on a gate that is not linked";
+use fta::fta::FrontierTransitAuthority;
+use sui::clock::Clock;
+use world::gate::Gate;
 
-// TODO: add public functions to update gate fees
+// Updates the fee for a pair of linked gates. Either gate can be provided and it will have the same effect.
+public fun update_fee(
+    fta: &mut FrontierTransitAuthority,
+    gate: &Gate,
+    jump_fee: u64,
+    takes_effect_on: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    let gate_record = fta.get_gate_record_mut(gate, ctx);
+    gate_record.update_fee(jump_fee, takes_effect_on, clock);
+}

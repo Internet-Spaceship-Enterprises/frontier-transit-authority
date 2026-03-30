@@ -3,9 +3,6 @@ module fta::gate_record;
 use fta::fee_history::{Self, FeeHistory};
 use sui::clock::Clock;
 
-#[error(code = 4)]
-const EGateNotYours: vector<u8> = b"You cannot modify the fee for a gate you did not assign to FTA";
-
 public struct GateRecord has store {
     transferred_on: u64,
     transferred_from_character_id: ID,
@@ -59,11 +56,7 @@ public(package) fun update_fee(
     jump_fee: u64,
     takes_effect_on: u64,
     clock: &Clock,
-    ctx: &TxContext,
 ) {
-    // Ensure the sender is the entity that previously owned the gate
-    assert!(record.transferred_from_wallet_addr() == ctx.sender(), EGateNotYours);
-
     record.fee_history.update_fee(jump_fee, takes_effect_on, clock);
 }
 
