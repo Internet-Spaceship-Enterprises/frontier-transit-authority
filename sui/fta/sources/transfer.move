@@ -1,7 +1,7 @@
 module fta::transfer;
 
 use fta::access;
-use fta::fta::{FrontierTransitAuthority, DeveloperCap};
+use fta::fta::FrontierTransitAuthority;
 use fta::gate_record;
 use fta::network_node_record;
 use sui::clock::Clock;
@@ -10,6 +10,7 @@ use world::access::{OwnerCap, ReturnOwnerCapReceipt};
 use world::character::Character;
 use world::energy::EnergyConfig;
 use world::gate::Gate;
+use world::location::LocationRegistry;
 use world::network_node::NetworkNode;
 
 #[error(code = 0)]
@@ -31,6 +32,9 @@ const EGateHasNoNetworkNode: vector<u8> =
 #[error(code = 6)]
 const EDifferentNetworkNodes: vector<u8> =
     b"If using the `transfer_gate_pair_same_network_node` function, both gates must be linked to the same network node";
+#[error(code = 7)]
+const ELocationNotRevealed: vector<u8> =
+    b"You cannot transfer a gate to FTA unless the location has been revealed (using the in-game UI)";
 
 fun transfer_gate_pair_validation(gate_1: &Gate, gate_2: &Gate) {
     // Ensure the gates are bi-directionally linked
@@ -61,9 +65,13 @@ fun transfer_gate(
     network_node_owner_cap_receipt: &Option<ReturnOwnerCapReceipt>,
     jump_fee: u64,
     energy_config: &EnergyConfig,
+    location_registry: &LocationRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    // Ensure the location has been revealed, since we can't do it afterwards
+    assert!(location_registry.get_location(object::id(gate)).is_some(), ELocationNotRevealed);
+
     // Ensure the correct network node was provided
     assert!(gate.energy_source_id().borrow() == object::id(network_node), EWrongNetworkNode);
 
@@ -138,6 +146,7 @@ public fun transfer_gate_pair_same_network_node(
     gate_2_owner_cap_receipt: ReturnOwnerCapReceipt,
     jump_fee_2: u64,
     energy_config: &EnergyConfig,
+    location_registry: &LocationRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -160,6 +169,7 @@ public fun transfer_gate_pair_same_network_node(
         &network_node_owner_cap_receipt,
         jump_fee_1,
         energy_config,
+        location_registry,
         clock,
         ctx,
     );
@@ -175,6 +185,7 @@ public fun transfer_gate_pair_same_network_node(
         &network_node_owner_cap_receipt,
         jump_fee_2,
         energy_config,
+        location_registry,
         clock,
         ctx,
     );
@@ -222,6 +233,7 @@ public fun transfer_gate_pair(
     network_node_owner_cap_receipt_2: Option<ReturnOwnerCapReceipt>,
     jump_fee_2: u64,
     energy_config: &EnergyConfig,
+    location_registry: &LocationRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -238,6 +250,7 @@ public fun transfer_gate_pair(
         &network_node_owner_cap_receipt_1,
         jump_fee_1,
         energy_config,
+        location_registry,
         clock,
         ctx,
     );
@@ -253,6 +266,7 @@ public fun transfer_gate_pair(
         &network_node_owner_cap_receipt_2,
         jump_fee_2,
         energy_config,
+        location_registry,
         clock,
         ctx,
     );

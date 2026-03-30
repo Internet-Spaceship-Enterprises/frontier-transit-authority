@@ -4,13 +4,16 @@ module fta::fta;
 */
 module fta::fta;
 
+use fta::gate;
 use fta::gate_record::GateRecord;
 use fta::network_node_record::NetworkNodeRecord;
 use sui::dynamic_field as df;
 use sui::linked_table::{Self, LinkedTable};
 use sui::package::Publisher;
 use world::character::Character;
+use world::energy::EnergyConfig;
 use world::gate::Gate;
+use world::network_node::NetworkNode;
 
 #[error(code = 0)]
 const EGateNotInNetwork: vector<u8> = b"This gate is not part of the Frontier Transit Authority";
@@ -163,12 +166,12 @@ public(package) fun add_network_node_record(
 //     }
 // }
 
-public fun gate_registered(fta: &FrontierTransitAuthority, gate: &Gate): bool {
-    fta.gate_table.contains(object::id(gate))
-}
-
 public fun gate_count(fta: &FrontierTransitAuthority): u64 {
     fta.gate_table.length()
+}
+
+public fun gate_registered(fta: &FrontierTransitAuthority, gate: &Gate): bool {
+    fta.gate_table.contains(object::id(gate))
 }
 
 // Gets the fee to jump through a gate, which is the sum of the fee set on each gate
@@ -184,6 +187,7 @@ public fun gate_network_node_registered(fta: &FrontierTransitAuthority, gate: &G
     fta.network_node_table.contains(*energy_source_id_opt.borrow())
 }
 
+// TODO: delete
 public fun assert_gate_managed(fta: &FrontierTransitAuthority, gate: &Gate) {
     assert!(fta.gate_registered(gate), EGateNotInNetwork);
 }

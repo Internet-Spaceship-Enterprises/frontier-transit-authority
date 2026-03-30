@@ -2,6 +2,7 @@ export type WorldObjectIds = {
     governorCap: string;
     serverAddressRegistry: string;
     objectRegistry: string;
+    locationRegistry: string;
     adminAcl: string;
     energyConfig: string;
     fuelConfig: string;
@@ -46,6 +47,7 @@ export function getConfig(network: Network = "localnet"): WorldConfig {
         // If you don't have publish output JSON, you can hardcode these IDs here.
         governorCap: "",
         serverAddressRegistry: "",
+        locationRegistry: "",
         objectRegistry: "",
         adminAcl: "",
         energyConfig: "",

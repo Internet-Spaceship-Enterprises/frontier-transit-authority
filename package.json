@@ -6,7 +6,8 @@
     "scripts": {
         "set-owner-character": "tsx sui/fta/ts-scripts/set-owner-character.ts",
         "transfer-gates": "tsx sui/fta/ts-scripts/transfer-gates.ts",
-        "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts"
+        "return-gates": "tsx sui/fta/ts-scripts/return-gates.ts",
+        "reveal-gates": "tsx sui/fta/ts-scripts/reveal-gates.ts"
     },
     "dependencies": {
         "@mysten/bcs": "^2.0.2",

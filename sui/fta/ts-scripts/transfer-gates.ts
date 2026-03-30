@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Transaction, TransactionResult } from "@mysten/sui/transactions";
+import { Transaction } from "@mysten/sui/transactions";
 import { MODULES } from "../../../ts-scripts/utils/config";
 import { FTA_PACKAGE_ID, FTA_OBJECT_ID } from "./config";
 import {
@@ -93,6 +93,7 @@ async function prepareTransferGate(
                 gate2OwnerReceipt,
                 tx.pure.u64(99),
                 tx.object(config.energyConfig),
+                tx.object(config.locationRegistry),
                 tx.object.clock(),
             ],
         });
@@ -143,6 +144,7 @@ async function prepareTransferGate(
                 }),
                 tx.pure.u64(99),
                 tx.object(config.energyConfig),
+                tx.object(config.locationRegistry),
                 tx.object.clock(),
             ],
         });
