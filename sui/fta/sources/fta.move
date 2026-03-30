@@ -9,6 +9,7 @@ use fta::blacklist::{Self, Blacklist};
 use fta::bounty_board::{Self, BountyBoard};
 use fta::gate_registry::{Self, GateRegistry};
 use fta::jump;
+use fta::jump_estimate::{Self, JumpEstimate};
 use fta::jump_history::{Self, JumpHistory};
 use fta::jump_quote::{Self, JumpQuote};
 use fta::killmail_registry::{Self, KillmailRegistry};
@@ -508,7 +509,34 @@ public fun network_node_update(
 // Jump operations
 //=================================
 
-/// Prepares a quote for a jump between two gates, which can be used to inform the user of the cost of the jump before they commit to purchasing the permit
+/// Prepares an estimate for a jump between two gates, which can be used to inform the user of the cost of the jump before they commit to purchasing the permit
+public fun jump_estimate(
+    fta: &mut FrontierTransitAuthority,
+    character_id: ID,
+    source_gate: &Gate,
+    destination_gate: &Gate,
+    validity_duration: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): JumpEstimate {
+    fta.assert_upgrade_cap_exchanged();
+    // Ensure both gates are valid and linked
+    fta.check_gate_validity(source_gate);
+    fta.check_gate_validity(destination_gate);
+    jump_estimate::new(
+        &fta.gate_registry,
+        &fta.network_node_registry,
+        &fta.blacklist,
+        character_id,
+        source_gate,
+        destination_gate,
+        validity_duration,
+        clock,
+        ctx,
+    )
+}
+
+/// Prepares a quote for a jump between two gates, which is an object that the user can then use to purchase a jump permit.
 public fun jump_quote(
     fta: &mut FrontierTransitAuthority,
     character_id: ID,
@@ -523,14 +551,17 @@ public fun jump_quote(
     fta.check_gate_validity(source_gate);
     fta.check_gate_validity(destination_gate);
     jump_quote::new(
-        &fta.gate_registry,
-        &fta.network_node_registry,
-        &fta.blacklist,
-        character_id,
-        source_gate,
-        destination_gate,
-        validity_duration,
-        clock,
+        jump_estimate::new(
+            &fta.gate_registry,
+            &fta.network_node_registry,
+            &fta.blacklist,
+            character_id,
+            source_gate,
+            destination_gate,
+            validity_duration,
+            clock,
+            ctx,
+        ),
         ctx,
     )
 }
@@ -596,12 +627,12 @@ public fun jump_permit(
 /// Adds a jump to the jump history
 public(package) fun jump_history_add(
     fta: &mut FrontierTransitAuthority,
-    quote: JumpQuote,
+    quote: &JumpQuote,
     character_id: ID,
     permit_id: ID,
     ctx: &mut TxContext,
 ) {
-    fta.jump_history.add(&mut fta.blacklist, quote, character_id, permit_id, ctx);
+    fta.jump_history.add(&mut fta.blacklist, *quote.estimate(), character_id, permit_id, ctx);
 }
 
 //=================================

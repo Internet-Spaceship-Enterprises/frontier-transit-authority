@@ -1,13 +1,13 @@
 module fta::jump_history;
 
 use fta::blacklist::Blacklist;
-use fta::jump_quote::JumpQuote;
+use fta::jump_estimate::JumpEstimate;
 use fta::multi_rolling_averager::{Self, MultiRollingAverager};
 use sui::clock::Clock;
 use sui::linked_table::{Self, LinkedTable};
 
 public struct JumpHistoryEntry has copy, store {
-    quote: JumpQuote,
+    estimate: JumpEstimate,
     character_id: ID,
     permit_id: ID,
 }
@@ -48,17 +48,17 @@ public(package) fun new(ctx: &mut TxContext): JumpHistory {
 public(package) fun add(
     history: &mut JumpHistory,
     blacklist: &mut Blacklist,
-    quote: JumpQuote,
+    estimate: JumpEstimate,
     character_id: ID,
     permit_id: ID,
     ctx: &mut TxContext,
 ) {
     // Pay down the character's blacklist penalty based on the fee they just paid for this jump
-    blacklist.pay_down_penalty(character_id, quote.total_unscaled_base_fee());
+    blacklist.pay_down_penalty(character_id, estimate.total_unscaled_base_fee());
 
     // Create the entry
     let entry = JumpHistoryEntry {
-        quote: quote,
+        estimate: estimate,
         character_id: character_id,
         permit_id: permit_id,
     };
@@ -67,8 +67,8 @@ public(package) fun add(
         history.entries_by_character.push_back(character_id, new_character_jump_history(ctx));
     };
     // Add the entry to the character's history and the overall history
-    history.entries_by_character[character_id].entries.push_back(entry.quote.id(), copy entry);
-    history.entries.push_back(entry.quote.id(), entry);
+    history.entries_by_character[character_id].entries.push_back(entry.estimate.id(), copy entry);
+    history.entries.push_back(entry.estimate.id(), entry);
 }
 
 public(package) fun fee_average(
@@ -82,8 +82,8 @@ public(package) fun fee_average(
         .average!(
             &history.entries,
             period,
-            |key| history.entries[*key].quote.total_unscaled_base_fee(),
-            |key| history.entries[*key].quote.prepared_at(),
+            |key| history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| history.entries[*key].estimate.prepared_at(),
             clock,
         )
 }
@@ -105,8 +105,8 @@ public(package) fun fee_average_for_character(
         .average!(
             &history.entries,
             period,
-            |key| character_history.entries[*key].quote.total_unscaled_base_fee(),
-            |key| character_history.entries[*key].quote.prepared_at(),
+            |key| character_history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| character_history.entries[*key].estimate.prepared_at(),
             clock,
         )
 }
@@ -117,8 +117,8 @@ public(package) fun fee_total(history: &mut JumpHistory, period: u64, clock: &Cl
         .rolling_total!(
             &history.entries,
             period,
-            |key| history.entries[*key].quote.total_unscaled_base_fee(),
-            |key| history.entries[*key].quote.prepared_at(),
+            |key| history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| history.entries[*key].estimate.prepared_at(),
             clock,
         )
 }
@@ -139,8 +139,8 @@ public(package) fun fee_total_for_character(
         .rolling_total!(
             &character_history.entries,
             period,
-            |key| character_history.entries[*key].quote.total_unscaled_base_fee(),
-            |key| character_history.entries[*key].quote.prepared_at(),
+            |key| character_history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| character_history.entries[*key].estimate.prepared_at(),
             clock,
         )
 }
@@ -151,8 +151,8 @@ public(package) fun fee_count(history: &mut JumpHistory, period: u64, clock: &Cl
         .rolling_count!(
             &history.entries,
             period,
-            |key| history.entries[*key].quote.total_unscaled_base_fee(),
-            |key| history.entries[*key].quote.prepared_at(),
+            |key| history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| history.entries[*key].estimate.prepared_at(),
             clock,
         )
 }
@@ -173,8 +173,8 @@ public(package) fun fee_count_for_character(
         .rolling_count!(
             &character_history.entries,
             period,
-            |key| character_history.entries[*key].quote.total_unscaled_base_fee(),
-            |key| character_history.entries[*key].quote.prepared_at(),
+            |key| character_history.entries[*key].estimate.total_unscaled_base_fee(),
+            |key| character_history.entries[*key].estimate.prepared_at(),
             clock,
         )
 }

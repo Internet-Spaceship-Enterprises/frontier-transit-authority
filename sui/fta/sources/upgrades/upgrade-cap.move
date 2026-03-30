@@ -2,7 +2,7 @@ module fta::upgrade_cap;
 
 use sui::package;
 
-public struct UpgradeCap has key, store {
+public struct UpgradeCap has key {
     id: UID,
     cap: package::UpgradeCap,
 }

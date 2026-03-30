@@ -66,16 +66,22 @@ public(package) fun issue_jump_permit(
     // because we want to enable tribes to pay for jumps on behalf of their members
 
     // Ensure the provided gates match the invoice gates
-    assert!(quote.source_gate_id() == object::id(source_gate), EWrongSourceGate);
-    assert!(quote.destination_gate_id() == object::id(destination_gate), EWrongDestinationGate);
+    assert!(quote.estimate().source_gate_id() == object::id(source_gate), EWrongSourceGate);
+    assert!(
+        quote.estimate().destination_gate_id() == object::id(destination_gate),
+        EWrongDestinationGate,
+    );
 
     // Ensure the provided character matches the quote character
-    assert!(quote.character_id() == character.id(), EWrongCharacter);
+    assert!(quote.estimate().character_id() == character.id(), EWrongCharacter);
 
     let timestamp = clock.timestamp_ms();
 
     // Ensure the quote is recent enough to still be valid
-    assert!(timestamp - quote.prepared_at() <= constants::jump_quote_validity_ms(), EQuoteExpired);
+    assert!(
+        timestamp - quote.estimate().prepared_at() <= constants::jump_quote_validity_ms(),
+        EQuoteExpired,
+    );
 
     // Ensure the correct network nodes were provided
     assert!(
@@ -112,13 +118,13 @@ public(package) fun issue_jump_permit(
     );
 
     let source_gate_fee_recipient = gate_registry.get(source_gate).fee_recipient();
-    let source_gate_fee_coin = payment.split(quote.source_gate_fee_scaled(), ctx);
+    let source_gate_fee_coin = payment.split(quote.estimate().source_gate_fee_scaled(), ctx);
     source_gate_fee_coin.send_funds(source_gate_fee_recipient);
 
     // Get and transfer the destination gate fee
     let destination_gate_fee_recipient = gate_registry.get(destination_gate).fee_recipient();
     let destination_gate_fee_coin = payment.split(
-        quote.destination_gate_fee_scaled(),
+        quote.estimate().destination_gate_fee_scaled(),
         ctx,
     );
     destination_gate_fee_coin.send_funds(destination_gate_fee_recipient);
@@ -128,7 +134,7 @@ public(package) fun issue_jump_permit(
         .get_by_gate(source_gate)
         .fee_recipient();
     let source_network_node_fee_coin = payment.split(
-        quote.source_network_node_fee_scaled(),
+        quote.estimate().source_network_node_fee_scaled(),
         ctx,
     );
     source_network_node_fee_coin.send_funds(source_network_node_fee_recipient);
@@ -138,17 +144,17 @@ public(package) fun issue_jump_permit(
         .get_by_gate(destination_gate)
         .fee_recipient();
     let destination_network_node_fee_coin = payment.split(
-        quote.destination_network_node_fee_scaled(),
+        quote.estimate().destination_network_node_fee_scaled(),
         ctx,
     );
     destination_network_node_fee_coin.send_funds(destination_network_node_fee_recipient);
 
     // Split and transfer the developer fee
-    let developer_fee = payment.split(quote.developer_fee(), ctx).into_balance();
+    let developer_fee = payment.split(quote.estimate().developer_fee(), ctx).into_balance();
     balance::join(developer_balance, developer_fee);
 
     // Sanity check that the remaining amount is correct
-    assert!(payment.value() == quote.total_bounty_fee(), EWrongPaymentAmount);
+    assert!(payment.value() == quote.estimate().total_bounty_fee(), EWrongPaymentAmount);
     // Transfer the bounty fee
     balance::join(bounty_balance, payment.into_balance());
 
@@ -156,10 +162,13 @@ public(package) fun issue_jump_permit(
         destination_gate,
         character,
         jump_auth::new(),
-        timestamp + quote.validity_duration(),
+        timestamp + quote.estimate().validity_duration(),
         ctx,
     );
 
     // Record the issuance of the permit
-    jump_history.add(blacklist, quote, object::id(character), permit_id, ctx);
+    jump_history.add(blacklist, *quote.estimate(), object::id(character), permit_id, ctx);
+
+    // Destroy the quote to prevent reuse and reclaim gas fees
+    quote.destroy();
 }
