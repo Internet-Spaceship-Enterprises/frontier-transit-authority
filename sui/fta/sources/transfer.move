@@ -95,7 +95,7 @@ public fun transfer_gate_and_network_node(
 
 public fun transfer_gate_only(
     gate_network: &mut FrontierTransitAuthority,
-    gate_a_receipt_opt: &Option<GateTransferReceipt>,
+    gate_receipt_opt: &Option<GateTransferReceipt>,
     current_owner: &mut Character,
     gate: &mut Gate,
     gate_owner_cap: OwnerCap<Gate>,
@@ -137,7 +137,7 @@ public fun transfer_gate_only(
 
     transfer_gate(
         gate_network,
-        gate_a_receipt_opt,
+        gate_receipt_opt,
         current_owner,
         gate,
         gate_owner_cap,
@@ -186,6 +186,23 @@ fun transfer_gate(
         ctx,
     );
 
+    // Record the important values
+    let record = gate_record::new(
+        clock.timestamp_ms(),
+        object::id(current_owner),
+        ctx.sender(),
+        // Gate B values are from this call
+        gate_id,
+        gate_owner_cap_id,
+        network_node_id,
+        network_node_owner_cap_id,
+        jump_fee,
+        clock,
+        ctx,
+    );
+    // Put the record in the table using a unique hash for the pair
+    gate_network.add_gate_record(record);
+
     // Check if this is the second transfer
     if (gate_a_receipt_opt.is_some()) {
         let gate_a_receipt = gate_a_receipt_opt.borrow();
@@ -195,31 +212,8 @@ fun transfer_gate(
             EGatesNotLinked,
         );
 
-        // Record the important values
-        let record = gate_record::new(
-            clock.timestamp_ms(),
-            object::id(current_owner),
-            ctx.sender(),
-            // Gate A values are from the receipt
-            gate_a_receipt.gate_id,
-            gate_a_receipt.gate_owner_cap_id,
-            gate_a_receipt.network_node_id,
-            gate_a_receipt.network_node_owner_cap_id,
-            // Gate B values are from this call
-            gate_id,
-            gate_owner_cap_id,
-            network_node_id,
-            network_node_owner_cap_id,
-            jump_fee,
-            clock,
-            ctx,
-        );
-
         // Consume the receipt
         let _ = gate_a_receipt;
-
-        // Put the record in the table using a unique hash for the pair
-        gate_network.add_gate_record(record);
 
         // If a receipt was passed in, then this is the second transfer of two,
         // so do not return a receipt.

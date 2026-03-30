@@ -7,9 +7,9 @@ output=$(sui client test-publish --build-env testnet --pubfile-path $WORKSPACE_D
 
 echo "$output" > deploy.json
 packageId=$(echo "$output" | jq -r '.objectChanges | first(.[] | select(.type == "published")) | .packageId')
-fgnId=$(echo "$output" | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | endswith("::fgn::FrontierGateNetwork"))) | .objectId')
+ftaId=$(echo "$output" | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | endswith("::fta::FrontierTransitAuthority"))) | .objectId')
 
 echo "
-export const FGN_PACKAGE_ID = \"$packageId\";
-export const FGN_OBJECT_ID = \"$fgnId\";
+export const FTA_PACKAGE_ID = \"$packageId\";
+export const FTA_OBJECT_ID = \"$ftaId\";
 " > "$SCRIPT_DIR/ts-scripts/config.ts"

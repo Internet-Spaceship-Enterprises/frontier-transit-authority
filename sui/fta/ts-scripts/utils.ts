@@ -2,31 +2,7 @@ import { bcs } from "@mysten/sui/bcs";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { getConfig, MODULES } from "../../../ts-scripts/utils/config";
 import { devInspectMoveCallFirstReturnValueBytes } from "../../../ts-scripts/utils/dev-inspect";
-
-export async function getGateOwnerCap(
-    gateId: string,
-    client: SuiJsonRpcClient,
-    config: ReturnType<typeof getConfig>,
-    senderAddress?: string
-): Promise<string | null> {
-    try {
-        const bytes = await devInspectMoveCallFirstReturnValueBytes(client, {
-            target: `${config.packageId}::${MODULES.GATE}::owner_cap_id`,
-            senderAddress,
-            arguments: (tx) => [tx.object(gateId)],
-        });
-
-        if (!bytes) {
-            console.warn("Error checking ownercap id");
-            return null;
-        }
-
-        return bcs.Address.parse(bytes);
-    } catch (error) {
-        console.warn("Failed to get ownerCap:", error instanceof Error ? error.message : error);
-        return null;
-    }
-}
+import { FTA_PACKAGE_ID, FTA_OBJECT_ID } from "./config";
 
 export async function getNetworkNodeOwnerCap(
     networkNodeId: string,
@@ -52,6 +28,31 @@ export async function getNetworkNodeOwnerCap(
     }
 }
 
+export async function getGateOwnerCapId(
+    gateId: string,
+    client: SuiJsonRpcClient,
+    config: ReturnType<typeof getConfig>,
+    senderAddress?: string
+): Promise<string | null> {
+    try {
+        const bytes = await devInspectMoveCallFirstReturnValueBytes(client, {
+            target: `${config.packageId}::${MODULES.GATE}::owner_cap_id`,
+            senderAddress,
+            arguments: (tx) => [tx.object(gateId)],
+        });
+
+        if (!bytes) {
+            console.warn("Error checking energy source id");
+            return null;
+        }
+
+        return bcs.Address.parse(bytes);
+    } catch (error) {
+        console.warn("Failed to get energy source ID:", error instanceof Error ? error.message : error);
+        return null;
+    }
+}
+
 export async function getEnergySourceId(
     gateId: string,
     client: SuiJsonRpcClient,
@@ -73,6 +74,30 @@ export async function getEnergySourceId(
         return bcs.Address.parse(bytes);
     } catch (error) {
         console.warn("Failed to get energy source ID:", error instanceof Error ? error.message : error);
+        return null;
+    }
+}
+
+export async function gateNetworkNodeRegistered(
+    gateId: string,
+    client: SuiJsonRpcClient,
+    senderAddress?: string
+): Promise<boolean | null> {
+
+    try {
+        const bytes = await devInspectMoveCallFirstReturnValueBytes(client, {
+            target: `${FTA_PACKAGE_ID}::fta::gate_network_node_registered`,
+            senderAddress,
+            arguments: (tx) => [tx.object(FTA_OBJECT_ID), tx.object(gateId)],
+        });
+
+        if (!bytes) {
+            console.warn("Error checking ownercap id");
+            return null;
+        }
+        return bcs.Bool.parse(Uint8Array.from(bytes));;
+    } catch (error) {
+        console.warn("Failed to get ownerCap:", error instanceof Error ? error.message : error);
         return null;
     }
 }

@@ -4,7 +4,7 @@ use fta::fta::FrontierTransitAuthority;
 use sui::clock::Clock;
 use world::gate::Gate;
 
-// Updates the fee for a pair of linked gates. Either gate can be provided and it will have the same effect.
+// Updates the fee for a gate
 public fun update_fee(
     fta: &mut FrontierTransitAuthority,
     gate: &Gate,
@@ -14,5 +14,5 @@ public fun update_fee(
     ctx: &TxContext,
 ) {
     let gate_record = fta.get_gate_record_mut(gate, ctx);
-    gate_record.update_fee(jump_fee, takes_effect_on, clock);
+    gate_record.update_fee(jump_fee, takes_effect_on, clock, ctx);
 }
