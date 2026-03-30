@@ -152,13 +152,10 @@ cd "$WORKSPACE_DIR/world-contracts"
 pnpm install
 pnpm deploy-world $NETWORK
 pnpm configure-world $NETWORK
-
 # Publish the assets (EVE token)
 publish assets "deployments/$NETWORK/assets_package.json" "$NETWORK" "$WORKSPACE_DIR/world-contracts/contracts/world/Pub.localnet.toml"
 assets_package_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select(.type == "published")) | .packageId')
 eve_currency_object_id=$(cat $WORKSPACE_DIR/world-contracts/deployments/$NETWORK/assets_package.json | jq -r '.objectChanges | first(.[] | select((.objectType? // "") | startswith("0x2::coin_registry::Currency"))) | .objectId')
-# Finalize the EVE currency
-pnpm tsx $WORKSPACE_DIR/world-contracts/ts-scripts/assets/finalize-eve-currency.ts
 
 # Set the delay to 0 since we're just using localnet
 # This makes the deployment WAY faster
@@ -171,6 +168,9 @@ sed -i "s/ASSETS_PACKAGE_ID=/ASSETS_PACKAGE_ID=$assets_package_id/g" "$SETUP_SCR
 sed -i "s/EVE_CURRENCY_OBJECT_ID=/EVE_CURRENCY_OBJECT_ID=$eve_currency_object_id/g" "$SETUP_SCRIPT_DIR/.env"
 cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/world-contracts/.env" 
 cp "$SETUP_SCRIPT_DIR/.env" "$WORKSPACE_DIR/builder-scaffold/.env"  
+
+# Finalize the EVE currency
+pnpm tsx $WORKSPACE_DIR/world-contracts/ts-scripts/assets/finalize-eve-currency.ts
 
 # Copy over deployment artifacts
 cp -r "$WORKSPACE_DIR/world-contracts/deployments/$NETWORK" "$WORKSPACE_DIR/builder-scaffold/deployments/"
