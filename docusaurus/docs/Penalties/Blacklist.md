@@ -4,6 +4,10 @@ sidebar_position: 2
 
 Another mechanism that FTA can enforce to penalize aggressors is the Blacklist. This is an automated system that records characters who take aggressive actions toward FTA or against other players in FTA L-points.
 
-Characters on the blacklist pay a hefty penalty to use the FTA network. This takes the form of a multiplier of the standard base fees for a jump permit. Blacklist penalties stack as more aggressive actions occur, and are slowly removed over time (as encouragement for players to reform their behaviour; everyone makes mistakes).
+When a character performs an aggressive action, a record for them is entered into the blacklist. The record will specify a "penalty fee" and a "penalty multiplier", which vary depending on the severity of the action (e.g. more severe for destroying a Gate than a Network Node, more severe for destorying a Heavy Gate than for destroying a Mini Gate).
 
-The blacklist tracks total character penalties and uses that as a fee multiplier. For example, if a character destroyed a network node associated with an FTA-managed gate, they may receive a 1-month blacklist penalty with a factor of 20. This means that if the character wants to use an FTA-managed gate for which the total base fee is normally 100 EVE tokens, they would instead need to pay 2000 EVE tokens to purchase that jump permit. The extra penalty fees paid go back into the FTA bounty pool to support further punishment against offenders.
+That character will still be able to use the FTA, but will now pay the base fee multiplied by the "penalty multiplier", and will continue to pay this higher rate until their total penalty payments have reached the "penalty fee" total. For example, if a character destroys an FTA Heavy Gate, they may receive a penalty fee of 5 EVE tokens and a penalty multiplier of 8; that character will then pay 8 times the normal fee to use FTA gates until their total penalty payments have reached 5 EVE tokens.
+
+Characters can have multiple blacklist records. Each record will remain until the penalty fee for that record has been paid off, at which point the penalty multiplier for that record will no longer be applied.
+
+This system discourages aggression against the FTA, but still allows players to take extreme action in emergency scenarios (e.g. destroying an FTA gate that is enabling an attacking fleet in your tribe's home system).

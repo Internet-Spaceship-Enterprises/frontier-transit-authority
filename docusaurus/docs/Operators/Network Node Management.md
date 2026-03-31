@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 Network nodes are handled differently than gates. In order for a gate to be registered with FTA, the gate's ownership (`OwnerCap<Gate>`) must be transferred to FTA. The ownership of network nodes (`OwnerCap<NetworkNode>`), however, do not get transferred. The Network Node's ownership simply gets registered with FTA to allow the owner to modify the jump permit fees associated with that network node (TODO: see fee structure).

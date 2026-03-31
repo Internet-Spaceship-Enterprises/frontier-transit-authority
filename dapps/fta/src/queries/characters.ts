@@ -19,8 +19,7 @@ export async function getWalletCharacters(wallet: string): Promise<CharacterInfo
     const moveObject = result.data?.address.objects.nodes.map((node) => {
         const characterInfo = parseCharacterFromJson(node.contents.extract.asAddress.asObject.asMoveObject.contents.json);
         if (!characterInfo) {
-            console.error("Failed to parse character info for object", node);
-            return null;
+            throw new Error("Failed to parse character info for object " + JSON.stringify(node));
         }
         return characterInfo;
     })!;

@@ -1,11 +1,12 @@
 import { Flex, Box, Button, Tabs, Text, Strong } from "@radix-ui/themes";
-import { abbreviateAddress, useConnection, CharacterInfo } from "@evefrontier/dapp-kit";
+import { useConnection, CharacterInfo } from "@evefrontier/dapp-kit";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useEffect, useState } from "react";
 import { getWalletCharacters } from "./queries/characters";
 import { Operator } from "./Operator";
 import { Traveler } from "./Traveler";
 import { Loading } from "./components/loading";
+import { useFTA } from "./hooks/useFTA";
 
 
 export function Connected() {
@@ -14,6 +15,7 @@ export function Connected() {
     const [, setPlayerProfiles] = useState<CharacterInfo[] | null>(null);
     const [character, setCharacter] = useState<CharacterInfo | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
+    const fta = useFTA();
 
     useEffect(() => {
         async function load() {
@@ -47,7 +49,7 @@ export function Connected() {
                     <Loading />
                 ) : (
                     <Box alignSelf={"center"}>
-                        <Tabs.Root defaultValue="traveler">
+                        <Tabs.Root defaultValue={fta.assemblyId ? "traveler" : "operator"}>
                             <Tabs.List className="bigTabs" justify={"center"}>
                                 <Tabs.Trigger value="traveler">Traveler</Tabs.Trigger>
                                 <Tabs.Trigger value="operator">Operator</Tabs.Trigger>

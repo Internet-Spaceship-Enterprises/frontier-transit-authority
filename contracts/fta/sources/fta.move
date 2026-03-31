@@ -48,6 +48,8 @@ const EWrongOwnerCap: vector<u8> = b"The provided OwnerCap is not the right one 
 #[error(code = 7)]
 const EWrongSender: vector<u8> =
     b"The returned OwnerCap receipt does not match the sender of the transaction";
+#[error(code = 8)]
+const ENotPublisher: vector<u8> = b"The sender of the transaction is not the publisher";
 
 /// The OTW for the module.
 public struct FTA has drop {}
@@ -186,7 +188,11 @@ public(package) fun check_gate_validity(fta: &FrontierTransitAuthority, gate: &G
     );
 }
 
-public(package) fun assert_upgrade_cap_exchanged(fta: &FrontierTransitAuthority) {}
+/// Ensures that the default upgrade cap has been exchanged for the custom one.
+/// This prevents any operations from being performed before the upgrade cap is restricted to require community votes.
+public(package) fun assert_upgrade_cap_exchanged(fta: &FrontierTransitAuthority) {
+    assert!(fta.upgrade_cap_exchanged, EUpgradeCapNotExchanged);
+}
 
 //=================================
 // Access operations
@@ -414,11 +420,11 @@ public fun register_gate_pair(
 /// Deregisters a gate from the FTA and transfers ownership to whoever holds the ManagementCap for it
 public fun deregister_gate(
     fta: &mut FrontierTransitAuthority,
-    _: &UpgradeCap,
     gate: &mut Gate,
     owner_cap: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
 ) {
+    assert!(ctx.sender() == fta.deployer_addr, ENotPublisher);
     fta.assert_upgrade_cap_exchanged();
     let owner_cap = borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap, ctx);
     fta.gate_registry.deregister(gate, owner_cap);

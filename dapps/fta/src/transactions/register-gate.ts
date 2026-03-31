@@ -16,12 +16,10 @@ export async function registerGateTx(
     fee2_recipient_address: string
 ) {
     if (!gate1.energySourceId) {
-        console.error("Gate 1 does not have an energy source");
-        return;
+        throw new Error("Gate 1 does not have an energy source");
     }
     if (!gate2.energySourceId) {
-        console.error("Gate 2 does not have an energy source");
-        return;
+        throw new Error("Gate 2 does not have an energy source");
     }
 
     console.log("FTA_PUBLISHED_AT:", FTA_PUBLISHED_AT);
@@ -114,6 +112,6 @@ export async function registerGateTx(
         console.log(`Transferred gates: \n\t${gate1.id}\n\t${gate2.id}`);
         console.log('Transaction digest:', result.Transaction.digest);
     } catch (error) {
-        console.error('Transaction failed:', error);
+        throw new Error(`Transaction failed: ${error}`);
     }
 }

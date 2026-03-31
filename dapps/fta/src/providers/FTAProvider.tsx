@@ -19,6 +19,9 @@ import { CoordinatesType } from "../types/location";
 import { getLocationRegistry } from "../queries/locations";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
+const OBJECT_ID_KEY = "objectId";
+
+const OBJECT_ID = new URLSearchParams(window.location.search).get(OBJECT_ID_KEY) || null;
 
 /** @category Providers */
 export const FTAContext = createContext<FTAContextType>({
@@ -27,6 +30,7 @@ export const FTAContext = createContext<FTAContextType>({
     fta: null,
     gates: null,
     locations: null,
+    assemblyId: OBJECT_ID,
     refetch: async () => { },
 });
 
@@ -168,6 +172,7 @@ const FTAProvider = ({ children }: { children: ReactNode }) => {
                 error: error,
                 gates: gates,
                 locations: locations,
+                assemblyId: OBJECT_ID,
                 // network_nodes: network_nodes,
                 refetch: handleRefetchWithRetries,
             }}

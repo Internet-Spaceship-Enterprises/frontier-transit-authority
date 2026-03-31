@@ -1,4 +1,4 @@
-import { Button, Text, Dialog, Flex, Spinner } from "@radix-ui/themes";
+import { Button, Text, Dialog, Flex, Spinner, Box } from "@radix-ui/themes";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { getJumpQuote } from "./transactions/get-jump-quote";
 import { CharacterInfo, AssemblyType, Assemblies } from "@evefrontier/dapp-kit";
@@ -81,16 +81,16 @@ export function Traveler(props: TravelerProps) {
     }
     const [permit, setPermit] = useState<JumpPermit | null>(existingPermit);
 
-    const queryParams = new URLSearchParams(window.location.search);
-    if (!queryParams.has("objectId")) {
+    if (!fta.assemblyId) {
         return (
-            <Text>No Object ID set!</Text>
+            <Box alignSelf="center" justifySelf="center">
+                <Text>Out-of-game Traveler mode coming soon!</Text>
+            </Box>
         )
     }
-    const objectId = queryParams.get("objectId")!;
     useEffect(() => {
         async function load() {
-            const gate = await getGateById(objectId);
+            const gate = await getGateById(fta.assemblyId!);
             if (!gate!.gate.destinationId) {
                 throw new Error("Gate is not linked");
             }
@@ -129,7 +129,7 @@ export function Traveler(props: TravelerProps) {
 
     return (
         <Dialog.Root open={true}>
-            <Dialog.Content maxWidth="450px">
+            <Dialog.Content maxWidth="340px">
                 <Dialog.Title>Jump Quote</Dialog.Title>
                 <Dialog.Description size="2" mb="4">
 
@@ -146,7 +146,7 @@ export function Traveler(props: TravelerProps) {
                         </Button>
                     </Dialog.Close>
                     <Dialog.Close>
-                        <Button disabled={permitLoading} onClick={() => buyPermit(dAppKit, quote, setPermitLoading, setQuote, setPermit)}>
+                        <Button disabled={permitLoading} autoFocus onClick={() => buyPermit(dAppKit, quote, setPermitLoading, setQuote, setPermit)}>
                             <Spinner loading={permitLoading}>
                                 <RocketIcon />
                             </Spinner>

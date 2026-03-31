@@ -25,5 +25,6 @@ export interface FTAContextType {
     fta: FTAType | null,
     gates: Record<string, GateWithOwnerCap> | null;
     locations: Record<string, CoordinatesType> | null;
+    assemblyId: string | null
     refetch: () => Promise<void>;
 }

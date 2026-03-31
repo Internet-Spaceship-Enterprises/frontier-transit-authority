@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 Currently, since depositing fuel into network nodes can only be done in-game (requires a sponsored transaction), builders must retain ownership of their network nodes to be able to keep them fueled and operational.

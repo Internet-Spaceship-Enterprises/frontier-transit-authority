@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { Transaction } from "@mysten/sui/transactions";
 import { FTA_PACKAGE_ID, FTA_OBJECT_ID, FTA_NEW_UPGRADE_CAP_ID } from "./config";
-import { MODULES } from "../../../ts-scripts/utils/config";
 import {
     getEnvConfig,
     handleError,
@@ -12,7 +11,7 @@ import {
 import { deriveObjectId } from "../../../ts-scripts/utils/derive-object-id";
 import { getGateOwnerCapId } from "./utils";
 import { delay, getDelayMs } from "../../../ts-scripts/utils/delay";
-import { GAME_CHARACTER_B_ID, GATE_ITEM_ID_1, GATE_ITEM_ID_2 } from "../../../ts-scripts/utils/constants";
+import { GATE_ITEM_ID_1, GATE_ITEM_ID_2 } from "../../../ts-scripts/utils/constants";
 
 async function returnGateToOwner(
     ctx: ReturnType<typeof initializeContext>,

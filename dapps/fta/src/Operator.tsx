@@ -1,6 +1,6 @@
 import { Flex, Button, Text, TextField } from "@radix-ui/themes";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { CharacterInfo, AssemblyType, Assemblies } from "@evefrontier/dapp-kit";
+import { MagnifyingGlassIcon, SketchLogoIcon } from "@radix-ui/react-icons";
+import { CharacterInfo, AssemblyType, Assemblies, abbreviateAddress } from "@evefrontier/dapp-kit";
 import { useEffect, useState } from "react";
 import { getOwnedAssembliesByType } from "./queries/assemblies";
 import { registerNetworkNodeTx } from "./transactions/register-network-node";
@@ -101,7 +101,10 @@ type AssemblyData = {
 //     );
 // }
 
-async function registerGate(gate: AssemblyData, linkedGate: AssemblyData, props: AssemblyTableProps) {
+async function registerGate(gate: AssemblyData, linkedGate: AssemblyData, props: AssemblyTableProps, feePerUse: number) {
+    if (!feePerUse) {
+        throw new Error("Fee per use must be set to register a gate");
+    }
     console.log("Registering gate:", gate);
     console.log("Props:", props);
     const gateAssembly = gate.response.assembly as AssemblyType<Assemblies.SmartGate>;
@@ -114,24 +117,25 @@ async function registerGate(gate: AssemblyData, linkedGate: AssemblyData, props:
     // console.log("Destination gate ID:", gateAssembly.gate.destinationId);
     // const linkedGate = gate.assemblies![gateAssembly.gate.destinationId];
     if (!linkedGate) {
-        console.error("You do not own the linked gate with ID:", gateAssembly.gate.destinationId);
-        return;
+        throw new Error(`You do not own the linked gate with ID: ${abbreviateAddress(gateAssembly.gate.destinationId)}`);
     }
     //const linkedGateAssembly = (linkedGate.response.assembly as AssemblyType<Assemblies.SmartGate>);
     // props.setRegistrationPendingById((prev) => ({
     //     ...prev,
     //     [gate.response.assembly.id]: true,
     // }));
+    // Split the fee evenly across the two gates
+    const feePerGate = BigInt(feePerUse * 1000000000 / 2);
     await registerGateTx(
         props.dAppKit,
         gate.owner,
         gate.response.owner_cap.id,
         gateAssembly,
-        999n, // TODO: popup to set fee
+        feePerGate,
         props.account!.address,
         linkedGate.response.owner_cap.id,
         linkedGateAssembly,
-        999n, // TODO: popup to set fee
+        feePerGate,
         props.account!.address,
     );
     console.log("Gate registered!");
@@ -197,7 +201,10 @@ async function registerGate(gate: AssemblyData, linkedGate: AssemblyData, props:
 //     return renderTable(table);
 // }
 
-async function registerNetworkNode(networkNode: AssemblyData, props: AssemblyTableProps) {
+async function registerNetworkNode(networkNode: AssemblyData, props: AssemblyTableProps, feePerUse: number) {
+    if (!feePerUse) {
+        throw new Error("Fee per use must be set to register a network node");
+    }
     console.log("Registering network node:", networkNode);
     // props.setRegistrationPendingById((prev) => ({
     //     ...prev,
@@ -208,7 +215,7 @@ async function registerNetworkNode(networkNode: AssemblyData, props: AssemblyTab
         networkNode.owner,
         networkNode.response.owner_cap.id,
         networkNode.response.assembly.id,
-        999n,
+        BigInt(feePerUse * 1000000000),
         props.account!.address
     );
     console.log("Network node registered!");
@@ -285,6 +292,7 @@ export function Operator(props: OperatorProps) {
     // const [networkNodeSorting, setNetworkNodeSorting] = useState<SortingState>([]);
     // const [registerPendingById, setRegisterPendingById] = useState<Record<string, boolean>>({});
     const [assemblyId, setAssemblyId] = useState<string>("");
+    const [assemblyUseFee, setAssemblyUseFee] = useState<string | null>(null);
 
     useEffect(() => {
         console.log("Loading Assemblies!");
@@ -334,32 +342,43 @@ export function Operator(props: OperatorProps) {
                     <MagnifyingGlassIcon height="16" width="16" />
                 </TextField.Slot>
             </TextField.Root>
+            <Text>Fee Per Use (EVE):</Text>
+            <TextField.Root onChange={(e) => {
+                const next = e.target.value;
+                if (/^(\d+(\.\d*)?|\.\d*|)$/.test(next)) {
+                    setAssemblyUseFee(next);
+                }
+            }}
+                inputMode="decimal"
+                pattern="^\d*\.?\d*$"
+                value={assemblyUseFee ?? ''} placeholder="Price in EVE tokens">
+                <TextField.Slot>
+                    <SketchLogoIcon height="16" width="16" />
+                </TextField.Slot>
+            </TextField.Root>
             <Button onClick={async () => {
                 const foundNetworkNode = networkNodes ? networkNodes[assemblyId] : null;
                 if (foundNetworkNode) {
                     console.log("Found network node with ID:", assemblyId, foundNetworkNode);
-                    await registerNetworkNode(foundNetworkNode, { assemblies: gates, dAppKit, account });
+                    await registerNetworkNode(foundNetworkNode, { assemblies: gates, dAppKit, account }, Number(assemblyUseFee));
                     return;
                 } else {
                     const foundGate = gates ? gates[assemblyId] : null;
                     if (foundGate) {
-                        console.log("Found gate with ID:", assemblyId, foundGate);
+                        console.log("Found gate with ID:", abbreviateAddress(assemblyId), foundGate);
                         const assembly = foundGate.response.assembly as AssemblyType<Assemblies.SmartGate>;
                         if (!assembly.gate.destinationId) {
-                            console.error("Gate with ID:", assemblyId, "is not linked to any destination gate. Please link it before registering.");
-                            return;
+                            throw new Error(`Gate with ID: ${abbreviateAddress(assemblyId)} is not linked to any destination gate. Please link it before registering.`);
                         }
                         const linkedGate = gates ? gates[assembly.gate.destinationId] : null;
                         if (!linkedGate) {
-                            console.error("You do not own the linked gate with ID:", assembly.gate.destinationId, ". Please acquire it before registering.");
-                            return;
+                            throw new Error(`You do not own the linked gate with ID: ${abbreviateAddress(assembly.gate.destinationId)}. Please acquire it before registering.`);
                         }
-                        await registerGate(foundGate, linkedGate, { assemblies: gates, dAppKit, account });
+                        await registerGate(foundGate, linkedGate, { assemblies: gates, dAppKit, account }, Number(assemblyUseFee));
                         return;
                     } else {
-                        console.error("No gate found with ID:", assemblyId);
+                        throw new Error(`No network node or gate found with ID: ${abbreviateAddress(assemblyId)}`);
                     }
-                    console.error("No network node found with ID:", assemblyId);
                 }
             }
             }>Register</Button>

@@ -43,6 +43,6 @@ export async function registerNetworkNodeTx(dAppKit: DAppKit<[], ClientWithCoreA
         }
         console.log('Transaction digest:', result.Transaction.digest);
     } catch (error) {
-        console.error('Transaction failed:', error);
+        throw new Error(`Transaction failed: ${error}`);
     }
 }

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 Currently, when a jump permit expires, it is no longer useful and is effectively discarded. The value of that permit is lost forever.

@@ -5,12 +5,12 @@ import { InfoCircledIcon } from "@radix-ui/react-icons";
 
 
 function formatEVE(amount: number) {
-    return (amount / 1000000000).toFixed(9) + " EVE";
+    return (amount / 1000000000).toFixed(4) + " EVE";
 }
 
 function Tooltip({ text }: { text: string }) {
     return (
-        <HoverCard.Root>
+        <HoverCard.Root defaultOpen={false}>
             <HoverCard.Trigger>
                 <IconButton size="1" variant="ghost" color="grass">
                     <InfoCircledIcon width="15" height="15" />

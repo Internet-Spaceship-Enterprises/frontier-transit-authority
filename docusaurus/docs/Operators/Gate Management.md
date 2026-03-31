@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 Although players transfer gate ownership to the FTA when they register a gate with the network, this does not mean that they shouldn't have ongoing rights to manage some aspects of the gate operation. Specifically, they should be able to modify the jump permit pricing to accommodate for inflation or other dynamic pricing factors.

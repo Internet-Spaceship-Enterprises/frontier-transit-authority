@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 import ReactDOM from "react-dom/client";
 import "@radix-ui/themes/styles.css";
 import "./styles/main.css";
@@ -14,10 +14,9 @@ import FTAProvider from "./providers/FTAProvider.tsx";
 
 const queryClient = new QueryClient();
 
-/** STEP 1 — EveFrontierProvider(queryClient) wraps App; composes QueryClientProvider (React Query), DAppKitProvider (Mysten Sui client + wallet), VaultProvider (EVE wallet/connection), SmartObjectProvider (GraphQL assembly/context), NotificationProvider (toasts). */
 ReactDOM.createRoot(document.getElementById("root")!).render(
   // <React.StrictMode>
-  <Theme appearance="dark">
+  <Theme appearance="dark" accentColor="orange">
     <QueryClientProvider client={queryClient}>
       <DAppKitProvider dAppKit={dAppKit}>
         <FTAProvider>
