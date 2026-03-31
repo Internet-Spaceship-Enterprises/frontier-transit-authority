@@ -9,3 +9,5 @@ This leads to a problem where any FTA gate that has its linked gate destroyed wi
 That character can then link it to a new gate, then transfer the linked gates back to FTA.
 
 This behaviour will be modified once [dynamic gate linking](../Future%20Work/Dynamic%20Network.md) is supported, as FTA will be able to re-link the gate with any other gate on-demand.
+
+The gate ownership reversion implementation can be seen [here](https://github.com/Internet-Spaceship-Enterprises/frontier-transit-authority/blob/cc1bbe74683062228dcc46672475ef7460fb1555/contracts/fta/sources/gates/gate-registry.move#L333), which is triggered by Killmail processing seen [here](https://github.com/Internet-Spaceship-Enterprises/frontier-transit-authority/blob/cc1bbe74683062228dcc46672475ef7460fb1555/contracts/fta/sources/killmails/killmail-registry.move#L99-L103).
