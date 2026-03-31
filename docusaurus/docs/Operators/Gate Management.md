@@ -9,3 +9,5 @@ FTA supports this by issuing a `ManagementCap` for any gate that is transferred 
 2. Changing which address jump fees for that gate are sent to
 
 The `ManagementCap` can be freely transferred to any other address, so players can delegate management authority or build complex custom logic to implement dynamic pricing.
+
+While fee updates have not yet been implemented in the dApp UI, the underlying Sui functionality can be seen [here](https://github.com/Internet-Spaceship-Enterprises/frontier-transit-authority/blob/main/contracts/fta/sources/management/management.move).

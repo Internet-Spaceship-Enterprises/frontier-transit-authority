@@ -9,7 +9,9 @@ use fta::network_node_registry::NetworkNodeRegistry;
 use sui::clock::Clock;
 use sui::derived_object::derive_address;
 use sui::table::{Self, Table};
+use world::access::OwnerCap;
 use world::character::Character;
+use world::gate::Gate;
 use world::killmail::Killmail;
 use world::object_registry::ObjectRegistry;
 
@@ -23,6 +25,13 @@ const ENoVictim: vector<u8> = b"No victim object was provided for thekillmail";
 #[error(code = 4)]
 const EWrongVictim: vector<u8> =
     b"The character object provided for the victim does not match the killmail";
+#[error(code = 5)]
+const ELinkedGateNotProvided: vector<u8> = b"The linked gate was not provided";
+#[error(code = 6)]
+const ELinkedGateOwnerCapNotProvided: vector<u8> = b"The linked gate owner cap was not provided";
+#[error(code = 7)]
+const EUnnecessaryLinkedGateOwnerCap: vector<u8> =
+    b"The linked gate owner cap was provided unnecessarily";
 
 public struct KillmailRegistry has store {
     processed_killmails: Table<ID, bool>,
@@ -39,6 +48,8 @@ public(package) fun process_killmail(
     killmail: &Killmail,
     killer: &Character,
     victim: &Option<Character>,
+    linked_gate: &mut Option<Gate>,
+    mut linked_gate_owner_cap: Option<OwnerCap<Gate>>,
     gate_registry: &mut GateRegistry,
     network_node_registry: &mut NetworkNodeRegistry,
     jump_history_registry: &mut JumpHistory,
@@ -76,13 +87,21 @@ public(package) fun process_killmail(
     };
 
     let mut deserves_punishment = false;
+    let mut linked_gate_owner_cap_used = false;
 
     if (killmail.is_structure_loss()) {
         // Check if the killmail is for a gate or a network node
         if (gate_registry.registered_by_id(victim_object_id)) {
+            assert!(linked_gate.is_some(), ELinkedGateNotProvided);
+            assert!(linked_gate_owner_cap.is_some(), ELinkedGateOwnerCapNotProvided);
             deserves_punishment = true;
             // The killmail is for a gate, so we need to update the gate registry
-            gate_registry.destroyed(victim_object_id);
+            gate_registry.destroyed(
+                victim_object_id,
+                linked_gate.borrow_mut(),
+                linked_gate_owner_cap.extract(),
+            );
+            linked_gate_owner_cap_used = true;
         } else if (network_node_registry.registered_by_id(victim_object_id)) {
             let record = network_node_registry.get_by_id_mut(victim_object_id);
 
@@ -94,6 +113,11 @@ public(package) fun process_killmail(
             network_node_registry.deregister_by_id(victim_object_id);
         }
     };
+
+    if (!linked_gate_owner_cap_used) {
+        assert!(linked_gate_owner_cap.is_none(), EUnnecessaryLinkedGateOwnerCap);
+    };
+    linked_gate_owner_cap.destroy_none();
 
     // If it was an FTA asset, we must administer punishment
     if (deserves_punishment) {

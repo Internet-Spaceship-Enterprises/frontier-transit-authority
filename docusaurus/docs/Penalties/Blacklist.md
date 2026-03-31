@@ -11,3 +11,5 @@ That character will still be able to use the FTA, but will now pay the base fee 
 Characters can have multiple blacklist records. Each record will remain until the penalty fee for that record has been paid off, at which point the penalty multiplier for that record will no longer be applied.
 
 This system discourages aggression against the FTA, but still allows players to take extreme action in emergency scenarios (e.g. destroying an FTA gate that is enabling an attacking fleet in your tribe's home system).
+
+The blacklist implementation can be seen [here](https://github.com/Internet-Spaceship-Enterprises/frontier-transit-authority/blob/main/contracts/fta/sources/blacklist/blacklist.move).

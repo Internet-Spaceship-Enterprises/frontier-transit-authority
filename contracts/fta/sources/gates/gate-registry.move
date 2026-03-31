@@ -43,6 +43,10 @@ const ENetworkNodeNotRegistered: vector<u8> =
     b"A gate cannot be transferred to FTA if its network node is not already registered with FTA";
 #[error(code = 11)]
 const EGateAlreadyRegistered: vector<u8> = b"This gate is already registered";
+#[error(code = 12)]
+const EWrongLinkedGate: vector<u8> = b"The provided linked gate is incorrect";
+#[error(code = 13)]
+const EWrongOwnerCap: vector<u8> = b"The provided owner cap is not the right one";
 
 public struct GateRegistry has store {
     // Maps gate ID to gate record
@@ -135,7 +139,7 @@ fun transfer_gate(
     assert!(gate.owner_cap_id() == object::id(&gate_owner_cap), EGateOwnerCapMismatch);
 
     // Ensure the gate is linked, since we can't link it after it's been transferred
-    assert!(!gate.linked_gate_id().is_none(), EGatesNotLinked);
+    assert!(gate.linked_gate_id().is_some(), EGatesNotLinked);
 
     // Ensure that the associated network node is already registered
     assert!(network_node_registry.registered(network_node), ENetworkNodeNotRegistered);
@@ -151,6 +155,7 @@ fun transfer_gate(
         object::id(current_owner),
         ctx.sender(),
         object::id(gate),
+        *gate.linked_gate_id().borrow(),
         jump_fee,
         fee_recipient,
         ctx,
@@ -302,6 +307,7 @@ public(package) fun deregister(
     gate: &mut Gate,
     owner_cap: OwnerCap<Gate>,
 ) {
+    assert!(owner_cap.is_authorized(gate.id()), EWrongOwnerCap);
     let record = registry.get(gate);
     let owner_addr = record.management_cap_owner_address();
 
@@ -314,11 +320,19 @@ public(package) fun deregister(
 }
 
 /// Process the destruction of a gate
-public(package) fun destroyed(registry: &mut GateRegistry, gate_id: ID) {
-    assert!(registry.registered_by_id(gate_id), EGateNotInNetwork);
+public(package) fun destroyed(
+    registry: &mut GateRegistry,
+    gate_id: ID,
+    linked_gate: &mut Gate,
+    linked_gate_owner_cap: OwnerCap<Gate>,
+) {
+    let record = registry.get_by_id(gate_id);
+    // Ensure the correct linked gate was passed
+    assert!(record.linked_gate_id() == object::id(linked_gate), EWrongLinkedGate);
+    // Get the record for the linked gate
+    registry.deregister(linked_gate, linked_gate_owner_cap);
     registry.table.remove(gate_id).destroy();
     // Since it's destroyed, we don't need to deregister the extension
-    // and there's nothing to transfer the ownership of
 }
 
 // Returns a list of the IDs of all gates managed by the FTA

@@ -12,4 +12,4 @@ There is also currently no mechanism to identify attacks/aggression that do not 
 
 Therefore, the current bounty system is quite simple until CCP implements the features necessary for a more comprehensive bounty system. Fees are collected from every purchase of a jump permit (a percentage of the base fee) and collected in a "bounty pool" that can only be used to pay out bounties (cannot be accessed by developers or any other player). 1% of the total bounty pool is paid out to the character who delivered the killing blow to any character that is currently on the bounty list. A character remains on the bounty list until they have been killed 5 times.
 
-This system will be updated once CCP implements additional functionality.
+This system will be updated once CCP implements additional functionality. The current implementation can be seen [here](https://github.com/Internet-Spaceship-Enterprises/frontier-transit-authority/blob/main/contracts/fta/sources/bounty/bounty-board.move).

@@ -424,6 +424,7 @@ public fun deregister_gate(
     owner_cap: Receiving<OwnerCap<Gate>>,
     ctx: &mut TxContext,
 ) {
+    // For testing purposes, only the publisher can do this
     assert!(ctx.sender() == fta.deployer_addr, ENotPublisher);
     fta.assert_upgrade_cap_exchanged();
     let owner_cap = borrow_gate_owner_cap_no_receipt(fta, gate, owner_cap, ctx);
@@ -440,6 +441,8 @@ public fun process_killmail(
     killmail: &Killmail,
     killer: &Character,
     victim: &Option<Character>,
+    linked_gate: &mut Option<Gate>,
+    linked_gate_owner_cap: Option<OwnerCap<Gate>>,
     object_registry: &ObjectRegistry,
     clock: &Clock,
     ctx: &mut TxContext,
@@ -451,6 +454,8 @@ public fun process_killmail(
             killmail,
             killer,
             victim,
+            linked_gate,
+            linked_gate_owner_cap,
             &mut fta.gate_registry,
             &mut fta.network_node_registry,
             &mut fta.jump_history,
