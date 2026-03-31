@@ -1,4 +1,4 @@
-import { Button, Text, Dialog, Flex, Table, Spinner } from "@radix-ui/themes";
+import { Button, Text, Dialog, Flex, Spinner } from "@radix-ui/themes";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { getJumpQuote } from "./transactions/get-jump-quote";
 import { CharacterInfo, AssemblyType, Assemblies } from "@evefrontier/dapp-kit";
@@ -8,9 +8,11 @@ import { JumpQuote, JumpPermit } from "./queries/types";
 import { Dispatch, SetStateAction } from "react";
 import { getJumpPermit } from "./transactions/get-jump-permit";
 import { JumpPermitDisplay } from "./components/jump-permit";
-import { abbreviateAddress } from "@evefrontier/dapp-kit";
 import { RocketIcon, CheckCircledIcon } from "@radix-ui/react-icons";
 import { JumpQuoteTable } from "./components/jump-quote";
+import { getSolarSystem, SolarSystemResponse } from "./queries/api/solar-system";
+import { useFTA } from "./hooks/useFTA";
+import { Loading } from "./components/loading";
 
 const localStorageKeyJumpPermit = "jump-permit";
 
@@ -61,11 +63,13 @@ type TravelerProps = {
 export function Traveler(props: TravelerProps) {
     const dAppKit = useDAppKit();
     const account = useCurrentAccount();
+    const fta = useFTA();
     const [loading, setLoading] = useState<boolean>(true);
     const [quoteLoading, setQuoteLoading] = useState<boolean>(false);
     const [permitLoading, setPermitLoading] = useState<boolean>(false);
     const [gate, setGate] = useState<AssemblyType<Assemblies.SmartGate> | null>(null);
     const [quote, setQuote] = useState<JumpQuote | null>(null);
+    const [destinationSystem, setDestinationSystem] = useState<SolarSystemResponse | null>(null);
 
     // Try loading the permit from local storage
     // TODO: replace this with a GraphQL query so it disappears if the permit is used
@@ -90,7 +94,7 @@ export function Traveler(props: TravelerProps) {
             if (!gate!.gate.destinationId) {
                 throw new Error("Gate is not linked");
             }
-            // TODO: load solar system name from EVE API
+            setDestinationSystem(await getSolarSystem(fta.locations![gate!.gate.destinationId!].solarsystem));
             setGate(gate);
             setLoading(false);
         };
@@ -99,7 +103,7 @@ export function Traveler(props: TravelerProps) {
 
     if (loading) {
         return (
-            <Text>Loading...</Text>
+            <Loading />
         )
     }
 
@@ -112,7 +116,7 @@ export function Traveler(props: TravelerProps) {
     if (!quote) {
         return (
             <Flex direction="column" p="4" gap="2" align="center">
-                <Text>Traveling to: {abbreviateAddress(gate!.gate.destinationId)}</Text>
+                <Text>Traveling to: {destinationSystem?.name}</Text>
                 <Button disabled={quoteLoading} onClick={() => { prepareQuote(dAppKit, setQuoteLoading, setQuote, account?.address!, props.character, gate!.id, gate!.gate.destinationId!) }}>
                     <Spinner loading={quoteLoading}>
                         <CheckCircledIcon />

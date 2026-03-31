@@ -1,16 +1,17 @@
-import { Flex, Box, Spinner, Button, Tabs, Text, Strong } from "@radix-ui/themes";
+import { Flex, Box, Button, Tabs, Text, Strong } from "@radix-ui/themes";
 import { abbreviateAddress, useConnection, CharacterInfo } from "@evefrontier/dapp-kit";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useEffect, useState } from "react";
 import { getWalletCharacters } from "./queries/characters";
 import { Operator } from "./Operator";
 import { Traveler } from "./Traveler";
+import { Loading } from "./components/loading";
 
 
 export function Connected() {
     const { handleDisconnect } = useConnection();
     const account = useCurrentAccount();
-    const [playerProfiles, setPlayerProfiles] = useState<CharacterInfo[] | null>(null);
+    const [, setPlayerProfiles] = useState<CharacterInfo[] | null>(null);
     const [character, setCharacter] = useState<CharacterInfo | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
@@ -36,17 +37,14 @@ export function Connected() {
                 p="3"
                 gap="2"
             >
-                <Text><Strong>Connected as:</Strong> {abbreviateAddress(account?.address)}</Text>
+                <Text><Strong>Connected as:</Strong> {character?.name}</Text>
                 <Button onClick={() => { handleDisconnect() }}>
                     Disconnect
                 </Button>
             </Flex>
             {
                 loading ? (
-                    <Flex pt="9" alignSelf="center" gap="4">
-                        <Spinner size="3" />
-                        <Text>Loading...</Text>
-                    </Flex>
+                    <Loading />
                 ) : (
                     <Box alignSelf={"center"}>
                         <Tabs.Root defaultValue="traveler">

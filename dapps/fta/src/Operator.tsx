@@ -1,26 +1,19 @@
-import { Box, Button, Tabs, Table, Spinner, Text, TextField } from "@radix-ui/themes";
+import { Flex, Button, Text, TextField } from "@radix-ui/themes";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { abbreviateAddress, CharacterInfo, AssemblyType, Assemblies } from "@evefrontier/dapp-kit";
-import { useEffect, useState, useMemo } from "react";
+import { CharacterInfo, AssemblyType, Assemblies } from "@evefrontier/dapp-kit";
+import { useEffect, useState } from "react";
 import { getOwnedAssembliesByType } from "./queries/assemblies";
 import { registerNetworkNodeTx } from "./transactions/register-network-node";
 import { registerGateTx } from "./transactions/register-gate";
 import { OwnedAssembliesByTypeResponse } from "./queries/assemblies";
 import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    getSortedRowModel,
-    SortingState,
-    useReactTable,
-    Table as ReactTable,
-} from '@tanstack/react-table'
-import { Link2Icon } from "@radix-ui/react-icons";
+// import {
+//     SortingState,
+// } from '@tanstack/react-table'
 
 type AssemblyTableProps = {
     assemblies: Record<string, AssemblyData> | null;
-    sorting: SortingState;
+    //sorting: SortingState;
     dAppKit: ReturnType<typeof useDAppKit>;
     account: ReturnType<typeof useCurrentAccount>;
     //setSorting: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
@@ -33,80 +26,80 @@ type AssemblyData = {
     response: OwnedAssembliesByTypeResponse;
 }
 
-type AssemblyRow = {
-    owner: string;
-    response: OwnedAssembliesByTypeResponse;
-    assemblies: Record<string, AssemblyData> | null;
-}
+// type AssemblyRow = {
+//     owner: string;
+//     response: OwnedAssembliesByTypeResponse;
+//     assemblies: Record<string, AssemblyData> | null;
+// }
 
-function renderTable(table: ReactTable<AssemblyData>) {
-    return (
-        <Table.Root>
-            <Table.Header>
-                {
-                    table.getHeaderGroups().map((headerGroup) => (
-                        <Table.Row key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => {
-                                return (
-                                    <Table.ColumnHeaderCell key={header.id} colSpan={header.colSpan}>
-                                        {header.isPlaceholder ? null : (
-                                            <div
-                                                className={
-                                                    header.column.getCanSort()
-                                                        ? 'cursor-pointer select-none'
-                                                        : ''
-                                                }
-                                                onClick={header.column.getToggleSortingHandler()}
-                                                title={
-                                                    header.column.getCanSort()
-                                                        ? header.column.getNextSortingOrder() === 'asc'
-                                                            ? 'Sort ascending'
-                                                            : header.column.getNextSortingOrder() === 'desc'
-                                                                ? 'Sort descending'
-                                                                : 'Clear sort'
-                                                        : undefined
-                                                }
-                                            >
-                                                {flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext(),
-                                                )}
-                                                {{
-                                                    asc: ' 🔼',
-                                                    desc: ' 🔽',
-                                                }[header.column.getIsSorted() as string] ?? null}
-                                            </div>
-                                        )}
-                                    </Table.ColumnHeaderCell>
-                                )
-                            })}
-                        </Table.Row>
-                    ))}
-            </Table.Header>
-            <Table.Body>
-                {table
-                    .getRowModel()
-                    .rows.slice(0, 10)
-                    .map((row) => {
-                        return (
-                            <Table.Row key={row.id}>
-                                {row.getVisibleCells().map((cell) => {
-                                    return (
-                                        <Table.Cell key={cell.id}>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext(),
-                                            )}
-                                        </Table.Cell>
-                                    )
-                                })}
-                            </Table.Row>
-                        )
-                    })}
-            </Table.Body>
-        </Table.Root>
-    );
-}
+// function renderTable(table: ReactTable<AssemblyData>) {
+//     return (
+//         <Table.Root>
+//             <Table.Header>
+//                 {
+//                     table.getHeaderGroups().map((headerGroup) => (
+//                         <Table.Row key={headerGroup.id}>
+//                             {headerGroup.headers.map((header) => {
+//                                 return (
+//                                     <Table.ColumnHeaderCell key={header.id} colSpan={header.colSpan}>
+//                                         {header.isPlaceholder ? null : (
+//                                             <div
+//                                                 className={
+//                                                     header.column.getCanSort()
+//                                                         ? 'cursor-pointer select-none'
+//                                                         : ''
+//                                                 }
+//                                                 onClick={header.column.getToggleSortingHandler()}
+//                                                 title={
+//                                                     header.column.getCanSort()
+//                                                         ? header.column.getNextSortingOrder() === 'asc'
+//                                                             ? 'Sort ascending'
+//                                                             : header.column.getNextSortingOrder() === 'desc'
+//                                                                 ? 'Sort descending'
+//                                                                 : 'Clear sort'
+//                                                         : undefined
+//                                                 }
+//                                             >
+//                                                 {flexRender(
+//                                                     header.column.columnDef.header,
+//                                                     header.getContext(),
+//                                                 )}
+//                                                 {{
+//                                                     asc: ' 🔼',
+//                                                     desc: ' 🔽',
+//                                                 }[header.column.getIsSorted() as string] ?? null}
+//                                             </div>
+//                                         )}
+//                                     </Table.ColumnHeaderCell>
+//                                 )
+//                             })}
+//                         </Table.Row>
+//                     ))}
+//             </Table.Header>
+//             <Table.Body>
+//                 {table
+//                     .getRowModel()
+//                     .rows.slice(0, 10)
+//                     .map((row) => {
+//                         return (
+//                             <Table.Row key={row.id}>
+//                                 {row.getVisibleCells().map((cell) => {
+//                                     return (
+//                                         <Table.Cell key={cell.id}>
+//                                             {flexRender(
+//                                                 cell.column.columnDef.cell,
+//                                                 cell.getContext(),
+//                                             )}
+//                                         </Table.Cell>
+//                                     )
+//                                 })}
+//                             </Table.Row>
+//                         )
+//                     })}
+//             </Table.Body>
+//         </Table.Root>
+//     );
+// }
 
 async function registerGate(gate: AssemblyData, linkedGate: AssemblyData, props: AssemblyTableProps) {
     console.log("Registering gate:", gate);
@@ -288,9 +281,9 @@ export function Operator(props: OperatorProps) {
     const [networkNodes, setNetworkNodes] = useState<Record<string, AssemblyData> | null>(null);
     const [gates, setGates] = useState<Record<string, AssemblyData> | null>(null);
 
-    const [gateSorting, setGateSorting] = useState<SortingState>([]);
-    const [networkNodeSorting, setNetworkNodeSorting] = useState<SortingState>([]);
-    const [registerPendingById, setRegisterPendingById] = useState<Record<string, boolean>>({});
+    // const [gateSorting, setGateSorting] = useState<SortingState>([]);
+    // const [networkNodeSorting, setNetworkNodeSorting] = useState<SortingState>([]);
+    // const [registerPendingById, setRegisterPendingById] = useState<Record<string, boolean>>({});
     const [assemblyId, setAssemblyId] = useState<string>("");
 
     useEffect(() => {
@@ -334,56 +327,42 @@ export function Operator(props: OperatorProps) {
     }, [props.character]);
 
     return (
-        <Tabs.Root defaultValue="gates">
-            <Tabs.List>
-                <Tabs.Trigger value="network-nodes">Network Nodes</Tabs.Trigger>
-                <Tabs.Trigger value="gates">Gates</Tabs.Trigger>
-            </Tabs.List>
-
-            <Box pt="3">
-                {/* <Tabs.Content value="network-nodes">
-                    <NetworkNodeAssemblyTable assemblies={networkNodes} sorting={networkNodeSorting} setSorting={setNetworkNodeSorting} registrationPendingById={registerPendingById} setRegistrationPendingById={setRegisterPendingById} dAppKit={dAppKit} account={account} />
-                </Tabs.Content>
-
-                <Tabs.Content value="gates">
-                    <GateAssemblyTable assemblies={gates} sorting={gateSorting} setSorting={setGateSorting} registrationPendingById={registerPendingById} setRegistrationPendingById={setRegisterPendingById} dAppKit={dAppKit} account={account} />
-                </Tabs.Content> */}
-                <Text>Assembly ID:</Text>
-                <TextField.Root onChange={(e) => setAssemblyId(e.target.value)} value={assemblyId}>
-                    <TextField.Slot>
-                        <MagnifyingGlassIcon height="16" width="16" />
-                    </TextField.Slot>
-                </TextField.Root>
-                <Button onClick={async () => {
-                    const foundNetworkNode = networkNodes ? networkNodes[assemblyId] : null;
-                    if (foundNetworkNode) {
-                        console.log("Found network node with ID:", assemblyId, foundNetworkNode);
-                        await registerNetworkNode(foundNetworkNode, { assemblies: gates, sorting: gateSorting, dAppKit, account });
+        <Flex direction="column" gap="3">
+            <Text>Register Assembly:</Text>
+            <TextField.Root onChange={(e) => setAssemblyId(e.target.value)} value={assemblyId} placeholder="Assembly ID: 0x123...">
+                <TextField.Slot>
+                    <MagnifyingGlassIcon height="16" width="16" />
+                </TextField.Slot>
+            </TextField.Root>
+            <Button onClick={async () => {
+                const foundNetworkNode = networkNodes ? networkNodes[assemblyId] : null;
+                if (foundNetworkNode) {
+                    console.log("Found network node with ID:", assemblyId, foundNetworkNode);
+                    await registerNetworkNode(foundNetworkNode, { assemblies: gates, dAppKit, account });
+                    return;
+                } else {
+                    const foundGate = gates ? gates[assemblyId] : null;
+                    if (foundGate) {
+                        console.log("Found gate with ID:", assemblyId, foundGate);
+                        const assembly = foundGate.response.assembly as AssemblyType<Assemblies.SmartGate>;
+                        if (!assembly.gate.destinationId) {
+                            console.error("Gate with ID:", assemblyId, "is not linked to any destination gate. Please link it before registering.");
+                            return;
+                        }
+                        const linkedGate = gates ? gates[assembly.gate.destinationId] : null;
+                        if (!linkedGate) {
+                            console.error("You do not own the linked gate with ID:", assembly.gate.destinationId, ". Please acquire it before registering.");
+                            return;
+                        }
+                        await registerGate(foundGate, linkedGate, { assemblies: gates, dAppKit, account });
                         return;
                     } else {
-                        const foundGate = gates ? gates[assemblyId] : null;
-                        if (foundGate) {
-                            console.log("Found gate with ID:", assemblyId, foundGate);
-                            const assembly = foundGate.response.assembly as AssemblyType<Assemblies.SmartGate>;
-                            if (!assembly.gate.destinationId) {
-                                console.error("Gate with ID:", assemblyId, "is not linked to any destination gate. Please link it before registering.");
-                                return;
-                            }
-                            const linkedGate = gates ? gates[assembly.gate.destinationId] : null;
-                            if (!linkedGate) {
-                                console.error("You do not own the linked gate with ID:", assembly.gate.destinationId, ". Please acquire it before registering.");
-                                return;
-                            }
-                            await registerGate(foundGate, linkedGate, { assemblies: gates, sorting: gateSorting, dAppKit, account });
-                            return;
-                        } else {
-                            console.error("No gate found with ID:", assemblyId);
-                        }
-                        console.error("No network node found with ID:", assemblyId);
+                        console.error("No gate found with ID:", assemblyId);
                     }
+                    console.error("No network node found with ID:", assemblyId);
                 }
-                }>Register</Button>
-            </Box>
-        </Tabs.Root>
+            }
+            }>Register</Button>
+        </Flex>
     );
 }

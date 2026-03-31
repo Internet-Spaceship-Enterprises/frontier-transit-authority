@@ -1,4 +1,4 @@
-import { Text, Strong, DataList, Popover, IconButton, Flex, Box, HoverCard } from "@radix-ui/themes";
+import { Text, Strong, DataList, IconButton, Flex, Box, HoverCard } from "@radix-ui/themes";
 import { JumpQuote } from "../queries/types";
 import { formatTime } from "../utils/formatting";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
@@ -36,7 +36,7 @@ function DataListItem({ label, value, tooltip, strong }: { label: string, value:
                 </Flex>
             </DataList.Label>
             <DataList.Value>
-                <Text>{value}</Text>
+                <Text>{strong ? <Strong>{value}</Strong> : value}</Text>
             </DataList.Value>
         </DataList.Item >
     )

@@ -36,24 +36,35 @@ export interface GetAssemblyByIdResponse {
     }
 }
 
+export interface JumpEstimate {
+    prepared_at: number;
+    character_id: string;
+    source_gate_id: string;
+    destination_gate_id: string;
+    source_gate_fee: number;
+    destination_gate_fee: number;
+    source_network_node_fee: number
+    destination_network_node_fee: number;
+    scaling_factor: number;
+    penalty_factor: number;
+    bounty_fee: number;
+    developer_fee: number;
+    validity_duration: number;
+    precision_factor: number;
+}
+
 export interface JumpQuote {
     id: string;
-    estimate: {
-        prepared_at: number;
-        character_id: number;
-        source_gate_id: string;
-        destination_gate_id: string;
-        source_gate_fee: number;
-        destination_gate_fee: number;
-        source_network_node_fee: number
-        destination_network_node_fee: number;
-        scaling_factor: number;
-        penalty_factor: number;
-        bounty_fee: number;
-        developer_fee: number;
-        validity_duration: number;
-        precision_factor: number;
-    }
+    estimate: JumpEstimate;
+    destination_gate_fee: number;
+    source_network_node_fee: number
+    destination_network_node_fee: number;
+    scaling_factor: number;
+    penalty_factor: number;
+    bounty_fee: number;
+    developer_fee: number;
+    validity_duration: number;
+    precision_factor: number;
 }
 
 export interface GetJumpQuoteResponse {

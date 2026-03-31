@@ -44,8 +44,6 @@ export async function getAssemblyById(assemblyId: string): Promise<AssemblyType<
     );
 
     const assembly = await transformToAssembly("", result.data?.object.asMoveObject!)!;
-
-    console.log(assembly);
     return assembly;
 }
 

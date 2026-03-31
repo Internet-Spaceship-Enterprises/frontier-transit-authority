@@ -392,7 +392,7 @@ public(package) fun update_gate_metadata(
     gate.update_metadata_name(gate_owner_cap, name);
     gate.update_metadata_description(gate_owner_cap, description);
 
-    let mut url = b"http://localhost:5173?objectId=0x".to_string(); // TODO: update with the real URL
+    let mut url = b"https://internet.spaceship.enterprises/fta/?objectId=0x".to_string();
     url.append(object::id(gate).to_address().to_string());
     gate.update_metadata_url(gate_owner_cap, url);
 }
