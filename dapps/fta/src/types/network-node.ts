@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OwnerCap } from "../types/owner-cap";
+import { OwnerCapType } from "../types/owner-cap";
 import {
     AssemblyType,
     Assemblies,
@@ -21,5 +21,5 @@ export type NetworkNodeRecordType = z.infer<typeof NetworkNodeRecordSchema>;
 
 export interface NetworkNodeWithOwnerCap {
     assembly: AssemblyType<Assemblies.NetworkNode>;
-    owner_cap: OwnerCap;
+    owner_cap: OwnerCapType;
 }

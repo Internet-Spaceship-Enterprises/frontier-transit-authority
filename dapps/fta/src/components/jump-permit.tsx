@@ -1,6 +1,6 @@
 import { Text, Flex, Strong } from "@radix-ui/themes";
 import { useState, useEffect, useMemo } from "react";
-import { JumpPermit } from "../queries/types";
+import { JumpPermit } from "../graphql/types";
 import { Dispatch, SetStateAction } from "react";
 
 function timeRemaining(permit: JumpPermit) {

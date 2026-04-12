@@ -1,13 +1,13 @@
 import { DAppKit, ClientWithCoreApi } from "@mysten/dapp-kit-react";
 import { Transaction } from "@mysten/sui/transactions";
 import { FTA_OBJECT_ID, FTA_PUBLISHED_AT } from "../../libs/constants";
-import { JumpPermit, JumpQuote } from "../queries/types";
+import { JumpPermit, JumpQuote } from "../graphql/types";
 import { Assemblies, AssemblyType } from "@evefrontier/dapp-kit";
 import { ENERGY_CONFIG, ASSETS_PACKAGE } from "../../libs/constants";
 import { coinWithBalance } from "@mysten/sui/transactions";
 import { getObjectIdsFromEffects, getTxEffects } from "../utils/tx-effects";
 import { sleep } from "../utils/sleep";
-import { getJumpPermit as getJumpPermitFromGraphQL } from "../queries/fta";
+import { getJumpPermit as getJumpPermitFromGraphQL } from "../graphql/fta";
 
 function totalFee(jumpQuote: JumpQuote): bigint {
     const base_fee = BigInt(jumpQuote.estimate.source_gate_fee) + BigInt(jumpQuote.estimate.source_network_node_fee) + BigInt(jumpQuote.estimate.destination_gate_fee) + BigInt(jumpQuote.estimate.destination_network_node_fee);

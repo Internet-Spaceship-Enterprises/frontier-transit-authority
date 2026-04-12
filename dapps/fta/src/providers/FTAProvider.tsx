@@ -11,12 +11,12 @@ import {
     AssemblyType,
 } from "@evefrontier/dapp-kit";
 import { FTAContextType, FTAType } from "../types/fta";
-import { getOwnedAssembliesByType } from "../queries/assemblies";
+import { getOwnedAssembliesByType } from "../graphql/assemblies";
 import { FTA_OBJECT_ID } from "../../libs/auto-constants";
-import { getFTA } from "../queries/fta";
+import { getFTA } from "../graphql/fta";
 import { GateWithOwnerCap } from "../types/gate";
 import { CoordinatesType } from "../types/location";
-import { getLocationRegistry } from "../queries/locations";
+import { getLocationRegistry } from "../graphql/locations";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
 const OBJECT_ID_KEY = "objectId";

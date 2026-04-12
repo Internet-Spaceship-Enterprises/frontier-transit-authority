@@ -3,14 +3,14 @@ import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { getJumpQuote } from "./transactions/get-jump-quote";
 import { CharacterInfo, AssemblyType, Assemblies } from "@evefrontier/dapp-kit";
 import { useState, useEffect } from "react";
-import { getGateById } from "./queries/assemblies";
-import { JumpQuote, JumpPermit } from "./queries/types";
+import { getGateById } from "./graphql/assemblies";
+import { JumpQuote, JumpPermit } from "./graphql/types";
 import { Dispatch, SetStateAction } from "react";
 import { getJumpPermit } from "./transactions/get-jump-permit";
 import { JumpPermitDisplay } from "./components/jump-permit";
 import { RocketIcon, CheckCircledIcon } from "@radix-ui/react-icons";
 import { JumpQuoteTable } from "./components/jump-quote";
-import { getSolarSystem, SolarSystemResponse } from "./queries/api/solar-system";
+import { getSolarSystem, SolarSystemResponse } from "./graphql/api/solar-system";
 import { useFTA } from "./hooks/useFTA";
 import { Loading } from "./components/loading";
 

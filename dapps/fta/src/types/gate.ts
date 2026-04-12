@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OwnerCap } from "../types/owner-cap";
+import { OwnerCapType } from "../types/owner-cap";
 import {
     AssemblyType,
     Assemblies,
@@ -21,5 +21,5 @@ export type GateRecordType = z.infer<typeof GateRecordSchema>;
 
 export interface GateWithOwnerCap {
     assembly: AssemblyType<Assemblies.SmartGate>;
-    owner_cap: OwnerCap;
+    owner_cap: OwnerCapType;
 }

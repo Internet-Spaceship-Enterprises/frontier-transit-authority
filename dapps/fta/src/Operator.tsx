@@ -2,11 +2,13 @@ import { Flex, Button, Text, TextField } from "@radix-ui/themes";
 import { MagnifyingGlassIcon, SketchLogoIcon } from "@radix-ui/react-icons";
 import { CharacterInfo, AssemblyType, Assemblies, abbreviateAddress } from "@evefrontier/dapp-kit";
 import { useEffect, useState } from "react";
-import { getOwnedAssembliesByType } from "./queries/assemblies";
+import { getOwnedAssembliesByType } from "./graphql/assemblies";
 import { registerNetworkNodeTx } from "./transactions/register-network-node";
 import { registerGateTx } from "./transactions/register-gate";
-import { OwnedAssembliesByTypeResponse } from "./queries/assemblies";
+import { OwnedAssembliesByTypeResponse } from "./graphql/assemblies";
 import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
+import { ManagementCapType } from "./types/management-cap";
+import { Loading } from "./components/loading";
 // import {
 //     SortingState,
 // } from '@tanstack/react-table'
@@ -280,13 +282,16 @@ async function registerNetworkNode(networkNode: AssemblyData, props: AssemblyTab
 
 type OperatorProps = {
     character: CharacterInfo;
+    gateManagementCaps: Record<string, ManagementCapType> | null;
+    networkNodeManagementCaps: Record<string, ManagementCapType> | null;
 };
 
 export function Operator(props: OperatorProps) {
     const dAppKit = useDAppKit();
     const account = useCurrentAccount();
-    const [networkNodes, setNetworkNodes] = useState<Record<string, AssemblyData> | null>(null);
-    const [gates, setGates] = useState<Record<string, AssemblyData> | null>(null);
+    const [ownedNetworkNodes, setOwnedNetworkNodes] = useState<Record<string, AssemblyData> | null>(null);
+    const [ownedGates, setOwnedGates] = useState<Record<string, AssemblyData> | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
 
     // const [gateSorting, setGateSorting] = useState<SortingState>([]);
     // const [networkNodeSorting, setNetworkNodeSorting] = useState<SortingState>([]);
@@ -297,6 +302,7 @@ export function Operator(props: OperatorProps) {
     useEffect(() => {
         console.log("Loading Assemblies!");
         async function load() {
+            setLoading(true);
             let networkNodesArray: AssemblyData[] = [];
             let gatesArray: AssemblyData[] = [];
             const networkNodesPromise = await getOwnedAssembliesByType(props.character.id, `network_node::NetworkNode`);
@@ -304,35 +310,35 @@ export function Operator(props: OperatorProps) {
             networkNodesArray = networkNodesArray.concat(networkNodesPromise.map(response => ({
                 owner: props.character.id,
                 response,
-                assemblies: networkNodes,
             })));
             gatesArray = gatesArray.concat(gatesPromise.map(response => ({
                 owner: props.character.id,
                 response,
-                assemblies: gates,
             })));
-            let networkNodesMap: Record<string, AssemblyData> = {};
-            networkNodesArray.forEach(networkNode => {
-                networkNodesMap[networkNode.response.assembly.id] = networkNode;
-            });
-            // Object.entries(networkNodesMap).forEach(([id, _]) => {
-            //     networkNodesMap[id].assemblies = networkNodesMap;
-            // })
-            console.log("Setting network nodes:", networkNodesMap);
-            setNetworkNodes(networkNodesMap);
 
-            let gatesMap: Record<string, AssemblyData> = {};
-            gatesArray.forEach(gate => {
-                gatesMap[gate.response.assembly.id] = gate;
-            });
-            // Object.entries(gatesMap).forEach(([id, _]) => {
-            //     gatesMap[id].assemblies = gatesMap;
-            // })
-            console.log("Setting gates:", gatesMap);
-            setGates(gatesMap);
+            const networkNodesMap = networkNodesArray.reduce((acc, networkNode) => {
+                acc[networkNode.response.assembly.id] = networkNode;
+                return acc;
+            }, {} as Record<string, AssemblyData>);
+
+            console.log("Setting owned network nodes:", networkNodesMap);
+            setOwnedNetworkNodes(networkNodesMap);
+
+            const gatesMap = gatesArray.reduce((acc, gate) => {
+                acc[gate.response.assembly.id] = gate;
+                return acc;
+            }, {} as Record<string, AssemblyData>);
+
+            console.log("Setting owned gates:", gatesMap);
+            setOwnedGates(gatesMap);
+            setLoading(false);
         };
         load();
     }, [props.character]);
+
+    if (loading) {
+        return <Loading />;
+    }
 
     return (
         <Flex direction="column" gap="3">
@@ -357,24 +363,24 @@ export function Operator(props: OperatorProps) {
                 </TextField.Slot>
             </TextField.Root>
             <Button onClick={async () => {
-                const foundNetworkNode = networkNodes ? networkNodes[assemblyId] : null;
+                const foundNetworkNode = ownedNetworkNodes ? ownedNetworkNodes[assemblyId] : null;
                 if (foundNetworkNode) {
                     console.log("Found network node with ID:", assemblyId, foundNetworkNode);
-                    await registerNetworkNode(foundNetworkNode, { assemblies: gates, dAppKit, account }, Number(assemblyUseFee));
+                    await registerNetworkNode(foundNetworkNode, { assemblies: ownedGates, dAppKit, account }, Number(assemblyUseFee));
                     return;
                 } else {
-                    const foundGate = gates ? gates[assemblyId] : null;
+                    const foundGate = ownedGates ? ownedGates[assemblyId] : null;
                     if (foundGate) {
                         console.log("Found gate with ID:", abbreviateAddress(assemblyId), foundGate);
                         const assembly = foundGate.response.assembly as AssemblyType<Assemblies.SmartGate>;
                         if (!assembly.gate.destinationId) {
                             throw new Error(`Gate with ID: ${abbreviateAddress(assemblyId)} is not linked to any destination gate. Please link it before registering.`);
                         }
-                        const linkedGate = gates ? gates[assembly.gate.destinationId] : null;
+                        const linkedGate = ownedGates ? ownedGates[assembly.gate.destinationId] : null;
                         if (!linkedGate) {
                             throw new Error(`You do not own the linked gate with ID: ${abbreviateAddress(assembly.gate.destinationId)}. Please acquire it before registering.`);
                         }
-                        await registerGate(foundGate, linkedGate, { assemblies: gates, dAppKit, account }, Number(assemblyUseFee));
+                        await registerGate(foundGate, linkedGate, { assemblies: ownedGates, dAppKit, account }, Number(assemblyUseFee));
                         return;
                     } else {
                         throw new Error(`No network node or gate found with ID: ${abbreviateAddress(assemblyId)}`);

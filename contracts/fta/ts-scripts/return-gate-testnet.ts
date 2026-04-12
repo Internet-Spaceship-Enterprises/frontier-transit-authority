@@ -45,14 +45,9 @@ async function returnGateToOwner(
     const { client, keypair, config, address } = ctx;
     let tx = new Transaction();
 
-    // const gateOwnerCapId = await getGateOwnerCapId(gateId, client, address);
-    // if (!gateOwnerCapId) {
-    //     throw new Error("Gate 1 OwnerCap not found (make sure the character owns the gate)");
-    // }
-
     console.log(`Returning gate: ${gateOwnerCapId}`);
     tx.moveCall({
-        target: `${FTA_PUBLISHED_AT}::fta::deregister_gate_original_upgrade_cap`,
+        target: `${FTA_PUBLISHED_AT}::fta::deregister_gate`,
         arguments: [
             tx.object(FTA_OBJECT_ID),
             tx.object(gateId),

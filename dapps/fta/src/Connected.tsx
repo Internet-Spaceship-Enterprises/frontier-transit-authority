@@ -2,11 +2,13 @@ import { Flex, Box, Button, Tabs, Text, Strong } from "@radix-ui/themes";
 import { useConnection, CharacterInfo } from "@evefrontier/dapp-kit";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useEffect, useState } from "react";
-import { getWalletCharacters } from "./queries/characters";
+import { getWalletCharacters } from "./graphql/characters";
 import { Operator } from "./Operator";
 import { Traveler } from "./Traveler";
 import { Loading } from "./components/loading";
 import { useFTA } from "./hooks/useFTA";
+import { ManagementCapType } from "./types/management-cap";
+import { getOwnedManagementCaps } from "./graphql/management";
 
 
 export function Connected() {
@@ -14,15 +16,23 @@ export function Connected() {
     const account = useCurrentAccount();
     const [, setPlayerProfiles] = useState<CharacterInfo[] | null>(null);
     const [character, setCharacter] = useState<CharacterInfo | null>(null);
+    const [gateManagementCaps, setGateManagementCaps] = useState<Record<string, ManagementCapType> | null>(null);
+    const [networkNodeManagementCaps, setNetworkNodeManagementCaps] = useState<Record<string, ManagementCapType> | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const fta = useFTA();
 
     useEffect(() => {
         async function load() {
-            const chars = await getWalletCharacters(account!.address);
-            setPlayerProfiles(chars);
+            const profiles = await getWalletCharacters(account!.address);
+            setPlayerProfiles(profiles);
             // TODO: drop down in top right to select character if multiple
-            setCharacter(chars[0]);
+            setCharacter(profiles[0]);
+
+            const [gateCaps, nnCaps] = await getOwnedManagementCaps(profiles[0].id);
+            console.log("Gate Management Caps:", gateCaps);
+            console.log("Network Node Management Caps:", nnCaps);
+            setGateManagementCaps(gateCaps);
+            setNetworkNodeManagementCaps(nnCaps);
             setLoading(false);
         }
         load();
@@ -61,7 +71,7 @@ export function Connected() {
                                 </Tabs.Content>
 
                                 <Tabs.Content value="operator">
-                                    <Operator character={character!} />
+                                    <Operator character={character!} gateManagementCaps={gateManagementCaps} networkNodeManagementCaps={networkNodeManagementCaps} />
                                 </Tabs.Content>
                             </Box>
                         </Tabs.Root>

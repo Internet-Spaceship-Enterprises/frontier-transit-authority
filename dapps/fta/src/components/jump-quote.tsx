@@ -1,5 +1,5 @@
 import { Text, Strong, DataList, IconButton, Flex, Box, HoverCard } from "@radix-ui/themes";
-import { JumpQuote } from "../queries/types";
+import { JumpQuote } from "../graphql/types";
 import { formatTime } from "../utils/formatting";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 
